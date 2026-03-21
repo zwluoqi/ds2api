@@ -20,14 +20,16 @@ export function useVercelSyncState({ apiFetch, onMessage, t, isVercel = false, c
     const [pollFailures, setPollFailures] = useState(0)
     const [nextRetryAt, setNextRetryAt] = useState(null)
 
+
+    const configOverride = config?.env_backed ? config : undefined
+
     const fetchSyncStatus = useCallback(async ({ manual = false } = {}) => {
         try {
-            const hasConfig = Boolean(config && (Array.isArray(config?.keys) || Array.isArray(config?.accounts)))
-            const res = await apiFetch('/admin/vercel/status', hasConfig ? {
+            const res = await apiFetch('/admin/vercel/status', configOverride ? {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    config_override: { keys: config?.keys || [], accounts: config?.accounts || [] },
+                    config_override: configOverride,
                 }),
             } : undefined)
             if (!res.ok) {
@@ -57,7 +59,7 @@ export function useVercelSyncState({ apiFetch, onMessage, t, isVercel = false, c
             // eslint-disable-next-line no-console
             console.error('Failed to fetch sync status:', e)
         }
-    }, [apiFetch, config, isVercel, onMessage, t])
+    }, [apiFetch, configOverride, isVercel, onMessage, t])
 
     useEffect(() => {
         const loadPreconfig = async () => {
@@ -124,7 +126,7 @@ export function useVercelSyncState({ apiFetch, onMessage, t, isVercel = false, c
                     vercel_token: tokenToUse,
                     project_id: projectId,
                     team_id: teamId || undefined,
-                    config_override: config ? { keys: config.keys || [], accounts: config.accounts || [] } : undefined,
+                    config_override: configOverride,
                 }),
             })
             const data = await res.json()
@@ -141,7 +143,7 @@ export function useVercelSyncState({ apiFetch, onMessage, t, isVercel = false, c
         } finally {
             setLoading(false)
         }
-    }, [apiFetch, config, fetchSyncStatus, onMessage, preconfig?.has_token, projectId, t, teamId, vercelToken])
+    }, [apiFetch, configOverride, fetchSyncStatus, onMessage, preconfig?.has_token, projectId, t, teamId, vercelToken])
 
     return {
         vercelToken,
