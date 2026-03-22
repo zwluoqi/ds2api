@@ -358,7 +358,7 @@ func TestHandleClaudeStreamRealtimeToolSafetyAcrossStructuredFormats(t *testing.
 	}
 }
 
-func TestHandleClaudeStreamRealtimePromotesUnclosedFencedToolExample(t *testing.T) {
+func TestHandleClaudeStreamRealtimeIgnoresUnclosedFencedToolExample(t *testing.T) {
 	h := &Handler{}
 	resp := makeClaudeSSEHTTPResponse(
 		"data: {\"p\":\"response/content\",\"v\":\"Here is an example:\\n```json\\n{\\\"tool_calls\\\":[{\\\"name\\\":\\\"Bash\\\",\\\"input\\\":{\\\"command\\\":\\\"pwd\\\"}}]}\"}",
@@ -379,8 +379,8 @@ func TestHandleClaudeStreamRealtimePromotesUnclosedFencedToolExample(t *testing.
 			break
 		}
 	}
-	if !foundToolUse {
-		t.Fatalf("expected tool_use for fenced example, body=%s", rec.Body.String())
+	if foundToolUse {
+		t.Fatalf("expected no tool_use for fenced example, body=%s", rec.Body.String())
 	}
 
 	foundToolStop := false
@@ -391,7 +391,12 @@ func TestHandleClaudeStreamRealtimePromotesUnclosedFencedToolExample(t *testing.
 			break
 		}
 	}
-	if !foundToolStop {
-		t.Fatalf("expected stop_reason=tool_use, body=%s", rec.Body.String())
+	if foundToolStop {
+		t.Fatalf("expected stop_reason to remain content-only, body=%s", rec.Body.String())
 	}
+}
+
+// Backward-compatible alias for historical test name used in CI logs.
+func TestHandleClaudeStreamRealtimePromotesUnclosedFencedToolExample(t *testing.T) {
+	TestHandleClaudeStreamRealtimeIgnoresUnclosedFencedToolExample(t)
 }

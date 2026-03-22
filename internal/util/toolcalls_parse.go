@@ -26,6 +26,9 @@ func ParseToolCallsDetailed(text string, availableToolNames []string) ToolCallPa
 		return result
 	}
 	result.SawToolCallSyntax = looksLikeToolCallSyntax(text)
+	if shouldSkipToolCallParsingForCodeFenceExample(text) {
+		return result
+	}
 
 	candidates := buildToolCallCandidates(text)
 	var parsed []ParsedToolCall
@@ -74,6 +77,9 @@ func ParseStandaloneToolCallsDetailed(text string, availableToolNames []string) 
 		return result
 	}
 	result.SawToolCallSyntax = looksLikeToolCallSyntax(trimmed)
+	if shouldSkipToolCallParsingForCodeFenceExample(trimmed) {
+		return result
+	}
 	candidates := buildToolCallCandidates(trimmed)
 	var parsed []ParsedToolCall
 	for _, candidate := range candidates {
@@ -183,6 +189,9 @@ func parseToolCallsPayload(payload string) []ParsedToolCall {
 	switch v := decoded.(type) {
 	case map[string]any:
 		if tc, ok := v["tool_calls"]; ok {
+			if isLikelyChatMessageEnvelope(v) {
+				return nil
+			}
 			return parseToolCallList(tc)
 		}
 		if parsed, ok := parseToolCallItem(v); ok {
@@ -192,6 +201,28 @@ func parseToolCallsPayload(payload string) []ParsedToolCall {
 		return parseToolCallList(v)
 	}
 	return nil
+}
+
+func isLikelyChatMessageEnvelope(v map[string]any) bool {
+	if v == nil {
+		return false
+	}
+	if _, ok := v["tool_calls"]; !ok {
+		return false
+	}
+	if role, ok := v["role"].(string); ok {
+		switch strings.ToLower(strings.TrimSpace(role)) {
+		case "assistant", "tool", "user", "system":
+			return true
+		}
+	}
+	if _, ok := v["tool_call_id"]; ok {
+		return true
+	}
+	if _, ok := v["content"]; ok {
+		return true
+	}
+	return false
 }
 
 func looksLikeToolCallSyntax(text string) bool {

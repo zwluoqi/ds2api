@@ -243,7 +243,7 @@ func TestHandleNonStreamEmbeddedToolCallExamplePromotesToolCall(t *testing.T) {
 	}
 }
 
-func TestHandleNonStreamFencedToolCallExamplePromotesToolCall(t *testing.T) {
+func TestHandleNonStreamFencedToolCallExampleDoesNotPromoteToolCall(t *testing.T) {
 	h := &Handler{}
 	resp := makeSSEHTTPResponse(
 		"data: {\"p\":\"response/content\",\"v\":\"```json\\n{\\\"tool_calls\\\":[{\\\"name\\\":\\\"search\\\",\\\"input\\\":{\\\"q\\\":\\\"go\\\"}}]}\\n```\"}",
@@ -259,18 +259,23 @@ func TestHandleNonStreamFencedToolCallExamplePromotesToolCall(t *testing.T) {
 	out := decodeJSONBody(t, rec.Body.String())
 	choices, _ := out["choices"].([]any)
 	choice, _ := choices[0].(map[string]any)
-	if choice["finish_reason"] != "tool_calls" {
-		t.Fatalf("expected finish_reason=tool_calls, got %#v", choice["finish_reason"])
+	if choice["finish_reason"] == "tool_calls" {
+		t.Fatalf("expected fenced example to remain content-only, got finish_reason=%#v", choice["finish_reason"])
 	}
 	msg, _ := choice["message"].(map[string]any)
 	toolCalls, _ := msg["tool_calls"].([]any)
-	if len(toolCalls) != 1 {
-		t.Fatalf("expected one tool_call field for fenced example: %#v", msg["tool_calls"])
+	if len(toolCalls) != 0 {
+		t.Fatalf("expected no tool_call field for fenced example: %#v", msg["tool_calls"])
 	}
 	content, _ := msg["content"].(string)
-	if strings.Contains(content, `"tool_calls"`) {
-		t.Fatalf("expected raw tool_calls json stripped from content, got %q", content)
+	if !strings.Contains(content, `"tool_calls"`) {
+		t.Fatalf("expected fenced example content preserved, got %q", content)
 	}
+}
+
+// Backward-compatible alias for historical test name used in CI logs.
+func TestHandleNonStreamFencedToolCallExamplePromotesToolCall(t *testing.T) {
+	TestHandleNonStreamFencedToolCallExampleDoesNotPromoteToolCall(t)
 }
 
 func TestHandleStreamToolCallInterceptsWithoutRawContentLeak(t *testing.T) {

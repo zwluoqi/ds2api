@@ -114,11 +114,29 @@ function parseToolCallsPayload(payload) {
     return [];
   }
   if (decoded.tool_calls) {
+    if (isLikelyChatMessageEnvelope(decoded)) {
+      return [];
+    }
     return parseToolCallList(decoded.tool_calls);
   }
 
   const one = parseToolCallItem(decoded);
   return one ? [one] : [];
+}
+
+function isLikelyChatMessageEnvelope(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+  if (!Object.prototype.hasOwnProperty.call(value, 'tool_calls')) {
+    return false;
+  }
+  const role = toStringSafe(value.role).trim().toLowerCase();
+  if (role === 'assistant' || role === 'tool' || role === 'user' || role === 'system') {
+    return true;
+  }
+  return Object.prototype.hasOwnProperty.call(value, 'tool_call_id')
+    || Object.prototype.hasOwnProperty.call(value, 'content');
 }
 
 function parseMarkupToolCalls(text) {

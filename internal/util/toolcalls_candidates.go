@@ -7,6 +7,8 @@ import (
 
 var toolCallPattern = regexp.MustCompile(`\{\s*["']tool_calls["']\s*:\s*\[(.*?)\]\s*\}`)
 var fencedJSONPattern = regexp.MustCompile("(?s)```(?:json)?\\s*(.*?)\\s*```")
+var fencedCodeBlockPattern = regexp.MustCompile("(?s)```[\\s\\S]*?```")
+var markupToolSyntaxPattern = regexp.MustCompile(`(?i)<(?:(?:[a-z0-9_:-]+:)?(?:tool_call|function_call|invoke)\b|(?:[a-z0-9_:-]+:)?function_calls\b|(?:[a-z0-9_:-]+:)?tool_use\b)`)
 
 func buildToolCallCandidates(text string) []string {
 	trimmed := strings.TrimSpace(text)
@@ -172,4 +174,23 @@ func looksLikeToolExampleContext(text string) bool {
 		return false
 	}
 	return strings.Contains(t, "```")
+}
+
+func shouldSkipToolCallParsingForCodeFenceExample(text string) bool {
+	if !looksLikeToolCallSyntax(text) {
+		return false
+	}
+	stripped := strings.TrimSpace(stripFencedCodeBlocks(text))
+	return !looksLikeToolCallSyntax(stripped)
+}
+
+func looksLikeMarkupToolSyntax(text string) bool {
+	return markupToolSyntaxPattern.MatchString(text)
+}
+
+func stripFencedCodeBlocks(text string) string {
+	if text == "" {
+		return ""
+	}
+	return fencedCodeBlockPattern.ReplaceAllString(text, " ")
 }

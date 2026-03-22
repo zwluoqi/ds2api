@@ -19,11 +19,11 @@ func TestParseToolCalls(t *testing.T) {
 	}
 }
 
-func TestParseToolCallsFromFencedJSON(t *testing.T) {
+func TestParseToolCallsIgnoresFencedJSON(t *testing.T) {
 	text := "I will call tools now\n```json\n{\"tool_calls\":[{\"name\":\"search\",\"input\":{\"q\":\"news\"}}]}\n```"
 	calls := ParseToolCalls(text, []string{"search"})
-	if len(calls) != 1 {
-		t.Fatalf("expected fenced tool_call payload to be parsed, got %#v", calls)
+	if len(calls) != 0 {
+		t.Fatalf("expected fenced tool_call payload to be ignored, got %#v", calls)
 	}
 }
 
@@ -112,10 +112,17 @@ func TestParseStandaloneToolCallsSupportsMixedProsePayload(t *testing.T) {
 	}
 }
 
-func TestParseStandaloneToolCallsParsesFencedCodeBlock(t *testing.T) {
+func TestParseStandaloneToolCallsIgnoresFencedCodeBlock(t *testing.T) {
 	fenced := "```json\n{\"tool_calls\":[{\"name\":\"search\",\"input\":{\"q\":\"go\"}}]}\n```"
-	if calls := ParseStandaloneToolCalls(fenced, []string{"search"}); len(calls) != 1 {
-		t.Fatalf("expected fenced tool_call payload to be parsed, got %#v", calls)
+	if calls := ParseStandaloneToolCalls(fenced, []string{"search"}); len(calls) != 0 {
+		t.Fatalf("expected fenced tool_call payload to be ignored, got %#v", calls)
+	}
+}
+
+func TestParseStandaloneToolCallsIgnoresChatTranscriptEnvelope(t *testing.T) {
+	transcript := `[{"role":"user","content":"请展示完整会话"},{"role":"assistant","content":null,"tool_calls":[{"function":{"name":"search","arguments":"{\"q\":\"go\"}"}}]}]`
+	if calls := ParseStandaloneToolCalls(transcript, []string{"search"}); len(calls) != 0 {
+		t.Fatalf("expected transcript envelope not to trigger tool call parse, got %#v", calls)
 	}
 }
 
