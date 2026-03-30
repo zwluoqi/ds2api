@@ -4,11 +4,18 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
 )
+
+func envWritebackEnabled() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("DS2API_ENV_WRITEBACK")))
+	return v == "1" || v == "true" || v == "yes" || v == "on"
+}
 
 type Store struct {
 	mu      sync.RWMutex
@@ -42,6 +49,24 @@ func loadConfig() (Config, bool, error) {
 		cfg, err := parseConfigString(rawCfg)
 		cfg.ClearAccountTokens()
 		cfg.DropInvalidAccounts()
+		if IsVercel() || !envWritebackEnabled() {
+			return cfg, true, err
+		}
+		content, fileErr := os.ReadFile(ConfigPath())
+		if fileErr == nil {
+			var fileCfg Config
+			if unmarshalErr := json.Unmarshal(content, &fileCfg); unmarshalErr == nil {
+				fileCfg.DropInvalidAccounts()
+				return fileCfg, false, err
+			}
+		}
+		if errors.Is(fileErr, os.ErrNotExist) {
+			if writeErr := writeConfigFile(ConfigPath(), cfg.Clone()); writeErr == nil {
+				return cfg, false, err
+			} else {
+				Logger.Warn("[config] env writeback bootstrap failed", "error", writeErr)
+			}
+		}
 		return cfg, true, err
 	}
 
@@ -177,7 +202,7 @@ func (s *Store) Update(mutator func(*Config) error) error {
 func (s *Store) Save() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.fromEnv {
+	if s.fromEnv && (IsVercel() || !envWritebackEnabled()) {
 		Logger.Info("[save_config] source from env, skip write")
 		return nil
 	}
@@ -187,11 +212,15 @@ func (s *Store) Save() error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.path, b, 0o644)
+	if err := writeConfigBytes(s.path, b); err != nil {
+		return err
+	}
+	s.fromEnv = false
+	return nil
 }
 
 func (s *Store) saveLocked() error {
-	if s.fromEnv {
+	if s.fromEnv && (IsVercel() || !envWritebackEnabled()) {
 		Logger.Info("[save_config] source from env, skip write")
 		return nil
 	}
@@ -201,7 +230,32 @@ func (s *Store) saveLocked() error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.path, b, 0o644)
+	if err := writeConfigBytes(s.path, b); err != nil {
+		return err
+	}
+	s.fromEnv = false
+	return nil
+}
+
+func writeConfigFile(path string, cfg Config) error {
+	persistCfg := cfg.Clone()
+	persistCfg.ClearAccountTokens()
+	b, err := json.MarshalIndent(persistCfg, "", "  ")
+	if err != nil {
+		return err
+	}
+	return writeConfigBytes(path, b)
+}
+
+func writeConfigBytes(path string, b []byte) error {
+	dir := filepath.Dir(path)
+	if dir == "." || dir == "" {
+		return os.WriteFile(path, b, 0o644)
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("mkdir config dir: %w", err)
+	}
+	return os.WriteFile(path, b, 0o644)
 }
 
 func (s *Store) IsEnvBacked() bool {

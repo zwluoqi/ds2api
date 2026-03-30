@@ -79,6 +79,51 @@ func TestLoadStorePreservesFileBackedTokensForRuntime(t *testing.T) {
 	}
 }
 
+func TestEnvBackedStoreWritebackBootstrapsMissingConfigFile(t *testing.T) {
+	tmp, err := os.CreateTemp(t.TempDir(), "config-*.json")
+	if err != nil {
+		t.Fatalf("create temp config: %v", err)
+	}
+	path := tmp.Name()
+	_ = tmp.Close()
+	_ = os.Remove(path)
+
+	t.Setenv("DS2API_CONFIG_JSON", `{"keys":["k1"],"accounts":[{"email":"seed@example.com","password":"p"}]}`)
+	t.Setenv("CONFIG_JSON", "")
+	t.Setenv("DS2API_CONFIG_PATH", path)
+	t.Setenv("DS2API_ENV_WRITEBACK", "1")
+
+	store := LoadStore()
+	if store.IsEnvBacked() {
+		t.Fatalf("expected writeback bootstrap to become file-backed immediately")
+	}
+	if err := store.Update(func(c *Config) error {
+		c.Accounts = append(c.Accounts, Account{Email: "new@example.com", Password: "p2"})
+		return nil
+	}); err != nil {
+		t.Fatalf("update failed: %v", err)
+	}
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read written config: %v", err)
+	}
+	if !strings.Contains(string(content), "seed@example.com") {
+		t.Fatalf("expected bootstrapped config to contain seed account, got: %s", content)
+	}
+	if !strings.Contains(string(content), "new@example.com") {
+		t.Fatalf("expected persisted config to contain added account, got: %s", content)
+	}
+
+	reloaded := LoadStore()
+	if reloaded.IsEnvBacked() {
+		t.Fatalf("expected reloaded store to prefer persisted config file")
+	}
+	accounts := reloaded.Accounts()
+	if len(accounts) != 2 {
+		t.Fatalf("expected 2 accounts after reload, got %d", len(accounts))
+	}
+}
+
 func TestRuntimeTokenRefreshIntervalHoursDefaultsToSix(t *testing.T) {
 	t.Setenv("DS2API_CONFIG_JSON", `{
 		"keys":["k1"],
