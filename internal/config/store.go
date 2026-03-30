@@ -4,18 +4,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
 )
-
-func envWritebackEnabled() bool {
-	v := strings.ToLower(strings.TrimSpace(os.Getenv("DS2API_ENV_WRITEBACK")))
-	return v == "1" || v == "true" || v == "yes" || v == "on"
-}
 
 type Store struct {
 	mu      sync.RWMutex
@@ -240,47 +233,10 @@ func (s *Store) saveLocked() error {
 	return nil
 }
 
-func writeConfigFile(path string, cfg Config) error {
-	persistCfg := cfg.Clone()
-	persistCfg.ClearAccountTokens()
-	b, err := json.MarshalIndent(persistCfg, "", "  ")
-	if err != nil {
-		return err
-	}
-	return writeConfigBytes(path, b)
-}
-
-func writeConfigBytes(path string, b []byte) error {
-	dir := filepath.Dir(path)
-	if dir == "." || dir == "" {
-		return os.WriteFile(path, b, 0o644)
-	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("mkdir config dir: %w", err)
-	}
-	return os.WriteFile(path, b, 0o644)
-}
-
 func (s *Store) IsEnvBacked() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.fromEnv
-}
-
-func (s *Store) IsEnvWritebackEnabled() bool {
-	return envWritebackEnabled()
-}
-
-func (s *Store) HasEnvConfigSource() bool {
-	rawCfg := strings.TrimSpace(os.Getenv("DS2API_CONFIG_JSON"))
-	if rawCfg == "" {
-		rawCfg = strings.TrimSpace(os.Getenv("CONFIG_JSON"))
-	}
-	return rawCfg != ""
-}
-
-func (s *Store) ConfigPath() string {
-	return s.path
 }
 
 func (s *Store) SetVercelSync(hash string, ts int64) error {
