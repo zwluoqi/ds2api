@@ -365,3 +365,33 @@ func TestDetermineTargetAccountDoesNotFallbackOnLoginFailure(t *testing.T) {
 		t.Fatal("expected determine to fail for broken target account")
 	}
 }
+
+func TestDetermineManagedAccountReturnsLastEnsureErrorWhenAllFail(t *testing.T) {
+	t.Setenv("DS2API_CONFIG_JSON", `{
+		"keys":["managed-key"],
+		"accounts":[
+			{"email":"bad1@example.com","password":"pwd"},
+			{"email":"bad2@example.com","password":"pwd"}
+		]
+	}`)
+	store := config.LoadStore()
+	pool := account.NewPool(store)
+	ensureErr := errors.New("all credentials stale")
+	resolver := NewResolver(store, pool, func(_ context.Context, _ config.Account) (string, error) {
+		return "", ensureErr
+	})
+
+	req, _ := http.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+	req.Header.Set("x-api-key", "managed-key")
+
+	_, err := resolver.Determine(req)
+	if err == nil {
+		t.Fatal("expected determine to fail")
+	}
+	if !errors.Is(err, ensureErr) {
+		t.Fatalf("expected ensure error, got %v", err)
+	}
+	if errors.Is(err, ErrNoAccount) {
+		t.Fatalf("expected auth-style ensure error, got ErrNoAccount")
+	}
+}

@@ -79,12 +79,19 @@ func (r *Resolver) Determine(req *http.Request) (*RequestAuth, error) {
 
 func (r *Resolver) acquireManagedRequestAuth(ctx context.Context, callerID, target string) (*RequestAuth, error) {
 	tried := map[string]bool{}
+	var lastEnsureErr error
 	for {
 		if target == "" && len(tried) >= len(r.Store.Accounts()) {
+			if lastEnsureErr != nil {
+				return nil, lastEnsureErr
+			}
 			return nil, ErrNoAccount
 		}
 		acc, ok := r.Pool.AcquireWait(ctx, target, tried)
 		if !ok {
+			if lastEnsureErr != nil {
+				return nil, lastEnsureErr
+			}
 			return nil, ErrNoAccount
 		}
 
@@ -98,6 +105,7 @@ func (r *Resolver) acquireManagedRequestAuth(ctx context.Context, callerID, targ
 		}
 
 		if err := r.ensureManagedToken(ctx, a); err != nil {
+			lastEnsureErr = err
 			tried[a.AccountID] = true
 			r.Pool.Release(a.AccountID)
 			if target != "" {
