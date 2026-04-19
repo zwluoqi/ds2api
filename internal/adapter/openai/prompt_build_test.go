@@ -87,3 +87,17 @@ func TestBuildOpenAIFinalPrompt_VercelPreparePathKeepsFinalAnswerInstruction(t *
 		t.Fatalf("vercel prepare finalPrompt should not require fenced tool calls: %q", finalPrompt)
 	}
 }
+
+func TestBuildOpenAIFinalPromptWithThinkingAddsContinuationContract(t *testing.T) {
+	messages := []any{
+		map[string]any{"role": "user", "content": "继续回答上一个问题"},
+	}
+
+	finalPrompt, _ := buildOpenAIFinalPrompt(messages, nil, "", true)
+	if !strings.Contains(finalPrompt, "Continue the conversation from the full prior context") {
+		t.Fatalf("expected continuation contract in thinking prompt, got=%q", finalPrompt)
+	}
+	if !strings.Contains(finalPrompt, "final user-facing answer only in reasoning") {
+		t.Fatalf("expected visible-answer contract in thinking prompt, got=%q", finalPrompt)
+	}
+}
