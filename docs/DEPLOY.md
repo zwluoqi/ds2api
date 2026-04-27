@@ -382,7 +382,7 @@ cd ds2api
 cp config.example.json config.json
 # 使用你喜欢的编辑器打开 config.json，填入：
 #   - keys: 你的 API 访问密钥
-#   - accounts: DeepSeek 账号（email 或 mobile + password）
+#   - accounts: DeepSeek 账号（email 或 mobile + password，可选 device_id）
 
 # 启动服务
 go run ./cmd/ds2api

@@ -666,6 +666,7 @@ data: {"type":"message_stop"}
       "identifier": "user@example.com",
       "email": "user@example.com",
       "mobile": "",
+      "device_id": "optional-device-id",
       "has_password": true,
       "has_token": true,
       "token_preview": "abcde..."
@@ -693,7 +694,7 @@ data: {"type":"message_stop"}
     {"key": "k2", "name": "备用 Key", "remark": "压测"}
   ],
   "accounts": [
-    {"email": "user@example.com", "password": "pwd", "token": ""}
+    {"email": "user@example.com", "password": "pwd", "device_id": "optional-device-id"}
   ],
   "model_aliases": {
     "claude-sonnet-4-6": "deepseek-v4-flash",
@@ -815,7 +816,7 @@ data: {"type":"message_stop"}
 | --- | --- | --- |
 | `page` | `1` | ≥ 1 |
 | `page_size` | `10` | 1–5000 |
-| `q` | 空 | 按 identifier / email / mobile 过滤 |
+| `q` | 空 | 按 identifier / email / mobile / device_id 过滤 |
 
 **响应**：
 
@@ -826,6 +827,7 @@ data: {"type":"message_stop"}
       "identifier": "user@example.com",
       "email": "user@example.com",
       "mobile": "",
+      "device_id": "optional-device-id",
       "has_password": true,
       "has_token": true,
       "token_preview": "abc...",
@@ -842,17 +844,17 @@ data: {"type":"message_stop"}
 ### `POST /admin/accounts`
 
 ```json
-{"email": "user@example.com", "password": "pwd"}
+{"email": "user@example.com", "password": "pwd", "device_id": "optional-device-id"}
 ```
 
 **响应**：`{"success": true, "total_accounts": 6}`
 
 ### `PUT /admin/accounts/{identifier}`
 
-更新指定账号的 `name` / `remark`。路径参数中的 `identifier` 可以是 email 或 mobile，且不可修改。
+更新指定账号的 `name` / `remark` / `device_id`。路径参数中的 `identifier` 可以是 email 或 mobile，且不可修改。修改 `device_id` 会清空该账号运行时 token，下次使用时按新的设备 ID 重新登录。
 
 ```json
-{"name": "主账号", "remark": "团队共享"}
+{"name": "主账号", "remark": "团队共享", "device_id": "optional-device-id"}
 ```
 
 **响应**：`{"success": true, "total_accounts": 6}`
@@ -966,7 +968,7 @@ data: {"type":"message_stop"}
 {
   "keys": ["k1", "k2"],
   "accounts": [
-    {"email": "user@example.com", "password": "pwd", "token": ""}
+    {"email": "user@example.com", "password": "pwd", "device_id": "optional-device-id"}
   ]
 }
 ```

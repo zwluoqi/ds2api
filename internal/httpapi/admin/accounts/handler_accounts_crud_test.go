@@ -56,13 +56,13 @@ func TestListAccountsPageSizeAbove5000ClampedTo5000(t *testing.T) {
 
 func TestUpdateAccountMetadataPreservesCredentials(t *testing.T) {
 	h := newAdminTestHandler(t, `{
-		"accounts":[{"email":"u@example.com","name":"old name","remark":"old remark","password":"secret"}]
+		"accounts":[{"email":"u@example.com","name":"old name","remark":"old remark","password":"secret","device_id":"old-device"}]
 	}`)
 
 	r := chi.NewRouter()
 	r.Put("/admin/accounts/{identifier}", h.updateAccount)
 
-	body := []byte(`{"name":"new name","remark":"new remark"}`)
+	body := []byte(`{"name":"new name","remark":"new remark","device_id":"old-device"}`)
 	req := httptest.NewRequest(http.MethodPut, "/admin/accounts/u@example.com", strings.NewReader(string(body)))
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -84,6 +84,37 @@ func TestUpdateAccountMetadataPreservesCredentials(t *testing.T) {
 	}
 	if acc.Password != "secret" {
 		t.Fatalf("password should be preserved, got %#v", acc)
+	}
+	if acc.DeviceID != "old-device" {
+		t.Fatalf("device id should be preserved, got %#v", acc)
+	}
+}
+
+func TestUpdateAccountDeviceIDClearsRuntimeToken(t *testing.T) {
+	h := newAdminTestHandler(t, `{
+		"accounts":[{"email":"u@example.com","password":"secret","device_id":"old-device"}]
+	}`)
+	if err := h.Store.UpdateAccountToken("u@example.com", "runtime-token"); err != nil {
+		t.Fatalf("seed runtime token: %v", err)
+	}
+
+	r := chi.NewRouter()
+	r.Put("/admin/accounts/{identifier}", h.updateAccount)
+
+	req := httptest.NewRequest(http.MethodPut, "/admin/accounts/u@example.com", strings.NewReader(`{"device_id":"new-device"}`))
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	acc := h.Store.Snapshot().Accounts[0]
+	if acc.DeviceID != "new-device" {
+		t.Fatalf("device id update did not persist: %#v", acc)
+	}
+	if acc.Token != "" {
+		t.Fatalf("expected token to be cleared after device id change, got %q", acc.Token)
 	}
 }
 

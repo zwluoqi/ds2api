@@ -665,6 +665,7 @@ Returns sanitized config, including both `keys` and `api_keys`.
       "identifier": "user@example.com",
       "email": "user@example.com",
       "mobile": "",
+      "device_id": "optional-device-id",
       "has_password": true,
       "has_token": true,
       "token_preview": "abcde..."
@@ -692,7 +693,7 @@ If both `api_keys` and `keys` are sent, the structured `api_keys` entries win so
     {"key": "k2", "name": "Backup", "remark": "Load test"}
   ],
   "accounts": [
-    {"email": "user@example.com", "password": "pwd", "token": ""}
+    {"email": "user@example.com", "password": "pwd", "device_id": "optional-device-id"}
   ],
   "model_aliases": {
     "claude-sonnet-4-6": "deepseek-v4-flash",
@@ -809,7 +810,7 @@ Tests proxy connectivity: provide `proxy_id` to test a saved proxy; omit it to r
 | --- | --- | --- |
 | `page` | `1` | ≥ 1 |
 | `page_size` | `10` | 1–5000 |
-| `q` | empty | Filter by identifier / email / mobile |
+| `q` | empty | Filter by identifier / email / mobile / device_id |
 
 **Response**:
 
@@ -820,6 +821,7 @@ Tests proxy connectivity: provide `proxy_id` to test a saved proxy; omit it to r
       "identifier": "user@example.com",
       "email": "user@example.com",
       "mobile": "",
+      "device_id": "optional-device-id",
       "has_password": true,
       "has_token": true,
       "token_preview": "abc...",
@@ -838,17 +840,17 @@ Returned items also include `test_status`, usually `ok` or `failed`.
 ### `POST /admin/accounts`
 
 ```json
-{"email": "user@example.com", "password": "pwd"}
+{"email": "user@example.com", "password": "pwd", "device_id": "optional-device-id"}
 ```
 
 **Response**: `{"success": true, "total_accounts": 6}`
 
 ### `PUT /admin/accounts/{identifier}`
 
-Updates the `name` / `remark` of the specified account. The path `identifier` can be email or mobile and cannot be changed.
+Updates the `name` / `remark` / `device_id` of the specified account. The path `identifier` can be email or mobile and cannot be changed. Changing `device_id` clears the account runtime token so the next use logs in with the new device ID.
 
 ```json
-{"name": "Primary account", "remark": "Shared with the team"}
+{"name": "Primary account", "remark": "Shared with the team", "device_id": "optional-device-id"}
 ```
 
 **Response**: `{"success": true, "total_accounts": 6}`
@@ -963,7 +965,7 @@ Batch import keys and accounts.
 {
   "keys": ["k1", "k2"],
   "accounts": [
-    {"email": "user@example.com", "password": "pwd", "token": ""}
+    {"email": "user@example.com", "password": "pwd", "device_id": "optional-device-id"}
   ]
 }
 ```

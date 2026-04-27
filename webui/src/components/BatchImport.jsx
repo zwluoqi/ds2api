@@ -14,6 +14,69 @@ export default function BatchImport({ onRefresh, onMessage, authFetch }) {
     const apiFetch = authFetch || fetch
     const templates = getBatchImportTemplates(t)
 
+    const parseImportInput = (raw) => {
+        const trimmed = raw.trim()
+        try {
+            return JSON.parse(trimmed)
+        } catch (fullJsonError) {
+            const lines = trimmed
+                .split(/\r?\n/)
+                .map(line => line.trim())
+                .filter(Boolean)
+
+            if (lines.length <= 1) {
+                throw fullJsonError
+            }
+
+            return lines.reduce((config, line, index) => {
+                let item
+                try {
+                    item = JSON.parse(line)
+                } catch (lineError) {
+                    throw new Error(t('batchImport.invalidLineJson', { line: index + 1 }))
+                }
+                mergeImportLine(config, item)
+                return config
+            }, { keys: [], api_keys: [], accounts: [] })
+        }
+    }
+
+    const mergeImportLine = (config, item) => {
+        if (typeof item === 'string') {
+            const key = item.trim()
+            if (key) config.keys.push(key)
+            return
+        }
+
+        if (Array.isArray(item)) {
+            item.forEach(entry => mergeImportLine(config, entry))
+            return
+        }
+
+        if (!item || typeof item !== 'object') {
+            return
+        }
+
+        if (Array.isArray(item.keys)) {
+            config.keys.push(...item.keys.filter(key => typeof key === 'string' && key.trim()).map(key => key.trim()))
+        }
+        if (Array.isArray(item.api_keys)) {
+            config.api_keys.push(...item.api_keys)
+        }
+        if (Array.isArray(item.accounts)) {
+            config.accounts.push(...item.accounts)
+        }
+        if (item.key) {
+            config.api_keys.push({
+                key: String(item.key).trim(),
+                name: item.name || '',
+                remark: item.remark || '',
+            })
+        } else if (item.email || item.mobile) {
+            config.accounts.push(item)
+        }
+    }
+
     const handleImport = async () => {
         if (!jsonInput.trim()) {
             onMessage('error', t('batchImport.enterJson'))
@@ -22,9 +85,9 @@ export default function BatchImport({ onRefresh, onMessage, authFetch }) {
 
         let config
         try {
-            config = JSON.parse(jsonInput)
+            config = parseImportInput(jsonInput)
         } catch (e) {
-            onMessage('error', t('messages.invalidJson'))
+            onMessage('error', e.message || t('messages.invalidJson'))
             return
         }
 
@@ -153,7 +216,7 @@ export default function BatchImport({ onRefresh, onMessage, authFetch }) {
                         className="absolute inset-0 w-full h-full p-4 font-mono text-sm bg-[#09090b] text-foreground resize-none focus:outline-none custom-scrollbar"
                         value={jsonInput}
                         onChange={e => setJsonInput(e.target.value)}
-                        placeholder={'{\n  "keys": ["your-api-key"],\n  "accounts": [\n    {"email": "...", "password": "...", "token": ""}\n  ]\n}'}
+                        placeholder={'{\n  "keys": ["your-api-key"],\n  "accounts": [\n    {"email": "...", "password": "...", "device_id": ""}\n  ]\n}\n\n{"email":"account1@example.com","password":"pass1","device_id":""}\n{"email":"account2@example.com","password":"pass2","device_id":""}'}
                         spellCheck={false}
                     />
                 </div>

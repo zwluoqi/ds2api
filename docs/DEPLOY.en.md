@@ -372,7 +372,7 @@ cd ds2api
 cp config.example.json config.json
 # Open config.json and fill in:
 #   - keys: your API access keys
-#   - accounts: DeepSeek accounts (email or mobile + password)
+#   - accounts: DeepSeek accounts (email or mobile + password, optional device_id)
 
 # Start
 go run ./cmd/ds2api

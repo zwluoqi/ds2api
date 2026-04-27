@@ -17,7 +17,7 @@ func (c *Client) Login(ctx context.Context, acc config.Account) (string, error) 
 	clients := c.requestClientsForAccount(acc)
 	payload := map[string]any{
 		"password":  strings.TrimSpace(acc.Password),
-		"device_id": "deepseek_to_api",
+		"device_id": loginDeviceID(acc),
 		"os":        "android",
 	}
 	if email := strings.TrimSpace(acc.Email); email != "" {

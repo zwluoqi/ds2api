@@ -29,6 +29,7 @@ func (h *Handler) getConfig(w http.ResponseWriter, _ *http.Request) {
 			"remark":        acc.Remark,
 			"email":         acc.Email,
 			"mobile":        acc.Mobile,
+			"device_id":     acc.DeviceID,
 			"proxy_id":      acc.ProxyID,
 			"has_password":  strings.TrimSpace(acc.Password) != "",
 			"has_token":     token != "",

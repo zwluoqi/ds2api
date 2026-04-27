@@ -174,10 +174,11 @@ func TestToStringSliceTrimsWhitespace(t *testing.T) {
 
 func TestToAccountAllFields(t *testing.T) {
 	acc := toAccount(map[string]any{
-		"email":    "user@test.com",
-		"mobile":   "13800138000",
-		"password": "secret",
-		"token":    "tok123",
+		"email":     "user@test.com",
+		"mobile":    "13800138000",
+		"password":  "secret",
+		"device_id": " device-1 ",
+		"token":     "tok123",
 	})
 	if acc.Email != "user@test.com" {
 		t.Fatalf("unexpected email: %q", acc.Email)
@@ -187,6 +188,9 @@ func TestToAccountAllFields(t *testing.T) {
 	}
 	if acc.Password != "secret" {
 		t.Fatalf("unexpected password: %q", acc.Password)
+	}
+	if acc.DeviceID != "device-1" {
+		t.Fatalf("unexpected device id: %q", acc.DeviceID)
 	}
 	if acc.Token != "" {
 		t.Fatalf("expected token to be ignored, got %q", acc.Token)
