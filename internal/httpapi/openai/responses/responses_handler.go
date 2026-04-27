@@ -114,6 +114,9 @@ func (h *Handler) Responses(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responseID := "resp_" + strings.ReplaceAll(uuid.NewString(), "-", "")
+	if resp.StatusCode == http.StatusOK {
+		h.recordAccountRequest(a, stdReq.ResolvedModel)
+	}
 	if stdReq.Stream {
 		h.handleResponsesStream(w, r, resp, owner, responseID, stdReq.ResponseModel, stdReq.FinalPrompt, stdReq.Thinking, stdReq.Search, stdReq.ToolNames, stdReq.ToolChoice, traceID)
 		return
@@ -209,6 +212,15 @@ func (h *Handler) handleResponsesStream(w http.ResponseWriter, r *http.Request, 
 			streamRuntime.finalize()
 		},
 	})
+}
+
+func (h *Handler) recordAccountRequest(a *auth.RequestAuth, model string) {
+	if h == nil || h.Stats == nil || a == nil || !a.UseConfigToken || strings.TrimSpace(a.AccountID) == "" {
+		return
+	}
+	if err := h.Stats.Record(a.AccountID, model); err != nil {
+		config.Logger.Warn("[account_stats] record failed", "account", a.AccountID, "model", model, "error", err)
+	}
 }
 
 func logResponsesToolPolicyRejection(traceID string, policy promptcompat.ToolChoicePolicy, parsed toolcall.ToolCallParseResult, channel string) {

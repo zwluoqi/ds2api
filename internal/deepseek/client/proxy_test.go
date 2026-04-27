@@ -1,11 +1,17 @@
 package client
 
 import (
+	"bufio"
 	"context"
-	dsprotocol "ds2api/internal/deepseek/protocol"
+	"encoding/base64"
+	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
+
+	"ds2api/internal/config"
+	dsprotocol "ds2api/internal/deepseek/protocol"
 )
 
 func TestProxyDialAddressUsesLocalResolutionForSocks5(t *testing.T) {
@@ -42,6 +48,75 @@ func TestProxyDialAddressKeepsHostnameForSocks5h(t *testing.T) {
 	}
 	if lookups != 0 {
 		t.Fatalf("expected no local DNS lookup for socks5h, got %d", lookups)
+	}
+}
+
+func TestHTTPProxyDialContextUsesConnectAndAuth(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	defer func() {
+		if err := ln.Close(); err != nil {
+			t.Fatalf("close listener: %v", err)
+		}
+	}()
+
+	got := make(chan *http.Request, 1)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		conn, err := ln.Accept()
+		if err != nil {
+			return
+		}
+		defer func() {
+			if err := conn.Close(); err != nil {
+				t.Errorf("close proxy conn: %v", err)
+			}
+		}()
+		req, err := http.ReadRequest(bufio.NewReader(conn))
+		if err != nil {
+			return
+		}
+		got <- req
+		if _, err := conn.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n")); err != nil {
+			return
+		}
+	}()
+
+	host, portText, err := net.SplitHostPort(ln.Addr().String())
+	if err != nil {
+		t.Fatalf("split listener addr: %v", err)
+	}
+	port, err := strconv.Atoi(portText)
+	if err != nil {
+		t.Fatalf("parse listener port: %v", err)
+	}
+	dialContext, err := proxyDialContext(config.Proxy{Type: "http", Host: host, Port: port, Username: "user", Password: "pass"})
+	if err != nil {
+		t.Fatalf("proxyDialContext: %v", err)
+	}
+	conn, err := dialContext(context.Background(), "tcp", "chat.deepseek.com:443")
+	if err != nil {
+		t.Fatalf("dial via http proxy: %v", err)
+	}
+	if err := conn.Close(); err != nil {
+		t.Fatalf("close tunneled conn: %v", err)
+	}
+	<-done
+
+	select {
+	case req := <-got:
+		if req.Method != http.MethodConnect || req.Host != "chat.deepseek.com:443" {
+			t.Fatalf("unexpected CONNECT request: method=%q host=%q", req.Method, req.Host)
+		}
+		wantAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte("user:pass"))
+		if req.Header.Get("Proxy-Authorization") != wantAuth {
+			t.Fatalf("expected proxy auth %q, got %q", wantAuth, req.Header.Get("Proxy-Authorization"))
+		}
+	default:
+		t.Fatal("proxy did not receive CONNECT request")
 	}
 }
 

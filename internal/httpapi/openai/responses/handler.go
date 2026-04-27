@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"sync"
 
+	"ds2api/internal/accountstats"
 	"ds2api/internal/auth"
 	"ds2api/internal/chathistory"
 	"ds2api/internal/httpapi/openai/files"
@@ -23,6 +24,7 @@ type Handler struct {
 	Auth        shared.AuthResolver
 	DS          shared.DeepSeekCaller
 	ChatHistory *chathistory.Store
+	Stats       *accountstats.Store
 
 	responsesMu sync.Mutex
 	responses   *responseStore

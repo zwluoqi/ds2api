@@ -71,9 +71,17 @@ func (h *Handler) listAccounts(w http.ResponseWriter, r *http.Request) {
 			"has_token":     token != "",
 			"token_preview": maskSecretPreview(token),
 			"test_status":   testStatus,
+			"stats":         h.accountStatsSummary(acc.Identifier()),
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": items, "total": total, "page": page, "page_size": pageSize, "total_pages": totalPages})
+}
+
+func (h *Handler) accountStatsSummary(identifier string) any {
+	if h == nil || h.Stats == nil {
+		return nil
+	}
+	return h.Stats.Summary(identifier)
 }
 
 func (h *Handler) addAccount(w http.ResponseWriter, r *http.Request) {

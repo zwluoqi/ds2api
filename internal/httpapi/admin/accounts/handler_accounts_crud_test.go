@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+
+	"ds2api/internal/accountstats"
 )
 
 func TestListAccountsPageSizeCapIs5000(t *testing.T) {
@@ -145,5 +147,43 @@ func TestListAccountsMasksTokenPreview(t *testing.T) {
 	first, _ := items[0].(map[string]any)
 	if got, _ := first["token_preview"].(string); got != "ab****gh" {
 		t.Fatalf("expected masked token preview, got %q", got)
+	}
+}
+
+func TestListAccountsIncludesStats(t *testing.T) {
+	h := newAdminTestHandler(t, `{
+		"accounts":[{"email":"u@example.com","password":"pwd"}]
+	}`)
+	h.Stats = accountstats.New(t.TempDir())
+	if err := h.Stats.Record("u@example.com", "deepseek-v4-flash"); err != nil {
+		t.Fatalf("seed stats: %v", err)
+	}
+	if err := h.Stats.Record("u@example.com", "deepseek-v4-pro"); err != nil {
+		t.Fatalf("seed stats: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/accounts?page=1&page_size=10", nil)
+	rec := httptest.NewRecorder()
+	h.listAccounts(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode response failed: %v", err)
+	}
+	items, _ := payload["items"].([]any)
+	first, _ := items[0].(map[string]any)
+	stats, _ := first["stats"].(map[string]any)
+	if got, _ := stats["daily_requests"].(float64); got != 2 {
+		t.Fatalf("expected daily requests=2, got %#v", stats)
+	}
+	if got, _ := stats["total_flash_requests"].(float64); got != 1 {
+		t.Fatalf("expected total flash requests=1, got %#v", stats)
+	}
+	if got, _ := stats["total_pro_requests"].(float64); got != 1 {
+		t.Fatalf("expected total pro requests=1, got %#v", stats)
 	}
 }

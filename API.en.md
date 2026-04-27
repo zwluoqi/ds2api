@@ -788,7 +788,7 @@ Lists proxy configs (password is never returned; use `has_password` as a marker)
 
 ### `POST /admin/proxies`
 
-Adds a proxy. Request accepts `id` (optional; auto-generated when omitted), `name`, `type` (`http` / `socks5`), `host`, `port`, `username`, `password`.
+Adds a proxy. Request accepts `id` (optional; auto-generated when omitted), `name`, `type` (`http` / `socks5` / `socks5h`), `host`, `port`, `username`, `password`. `http` proxies use CONNECT tunnels for HTTPS targets.
 
 ### `PUT /admin/proxies/{proxyID}`
 
@@ -825,7 +825,15 @@ Tests proxy connectivity: provide `proxy_id` to test a saved proxy; omit it to r
       "has_password": true,
       "has_token": true,
       "token_preview": "abc...",
-      "test_status": "ok"
+      "test_status": "ok",
+      "stats": {
+        "daily_flash_requests": 12,
+        "daily_pro_requests": 3,
+        "daily_requests": 15,
+        "total_flash_requests": 120,
+        "total_pro_requests": 30,
+        "total_requests": 150
+      }
     }
   ],
   "total": 25,
@@ -835,7 +843,7 @@ Tests proxy connectivity: provide `proxy_id` to test a saved proxy; omit it to r
 }
 ```
 
-Returned items also include `test_status`, usually `ok` or `failed`.
+Returned items also include `test_status`, usually `ok` or `failed`. `stats` is stored independently per account under `data/account_stats/` by default, which maps to `/app/data/account_stats/` in Docker. Override it with `DS2API_ACCOUNT_STATS_DIR` when needed.
 
 ### `POST /admin/accounts`
 

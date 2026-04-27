@@ -41,9 +41,9 @@ func ValidateProxyConfig(proxies []Proxy) error {
 			return err
 		}
 		switch proxy.Type {
-		case "socks5", "socks5h":
+		case "http", "socks5", "socks5h":
 		default:
-			return fmt.Errorf("proxies.type must be one of socks5, socks5h")
+			return fmt.Errorf("proxies.type must be one of http, socks5, socks5h")
 		}
 		if err := ValidateTrimmedString("proxies.host", proxy.Host, true); err != nil {
 			return err

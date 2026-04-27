@@ -1,8 +1,10 @@
 package client
 
 import (
+	"bufio"
 	"context"
-	dsprotocol "ds2api/internal/deepseek/protocol"
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -14,6 +16,7 @@ import (
 
 	"ds2api/internal/auth"
 	"ds2api/internal/config"
+	dsprotocol "ds2api/internal/deepseek/protocol"
 	trans "ds2api/internal/deepseek/transport"
 )
 
@@ -71,6 +74,9 @@ func proxyCacheKey(proxyCfg config.Proxy) string {
 
 func proxyDialContext(proxyCfg config.Proxy) (trans.DialContextFunc, error) {
 	proxyCfg = config.NormalizeProxy(proxyCfg)
+	if proxyCfg.Type == "http" {
+		return httpProxyDialContext(proxyCfg), nil
+	}
 	var authCfg *proxy.Auth
 	if proxyCfg.Username != "" || proxyCfg.Password != "" {
 		authCfg = &proxy.Auth{User: proxyCfg.Username, Password: proxyCfg.Password}
@@ -90,6 +96,64 @@ func proxyDialContext(proxyCfg config.Proxy) (trans.DialContextFunc, error) {
 		}
 		return dialer.Dial(network, target)
 	}, nil
+}
+
+func httpProxyDialContext(proxyCfg config.Proxy) trans.DialContextFunc {
+	proxyAddr := net.JoinHostPort(proxyCfg.Host, strconv.Itoa(proxyCfg.Port))
+	return func(ctx context.Context, network, address string) (net.Conn, error) {
+		conn, err := (&net.Dialer{Timeout: 15 * time.Second, KeepAlive: 30 * time.Second}).DialContext(ctx, network, proxyAddr)
+		if err != nil {
+			return nil, err
+		}
+		if deadline, ok := ctx.Deadline(); ok {
+			if err := conn.SetDeadline(deadline); err != nil {
+				closeErr := conn.Close()
+				return nil, fmt.Errorf("set proxy deadline: %w", errors.Join(err, closeErr))
+			}
+		}
+		if err := writeHTTPProxyConnect(conn, proxyCfg, address); err != nil {
+			closeErr := conn.Close()
+			return nil, errors.Join(err, closeErr)
+		}
+		resp, err := http.ReadResponse(bufio.NewReader(conn), &http.Request{Method: http.MethodConnect})
+		if err != nil {
+			closeErr := conn.Close()
+			return nil, errors.Join(err, closeErr)
+		}
+		if resp.Body != nil {
+			if err := resp.Body.Close(); err != nil {
+				closeErr := conn.Close()
+				return nil, errors.Join(err, closeErr)
+			}
+		}
+		if resp.StatusCode != http.StatusOK {
+			closeErr := conn.Close()
+			return nil, errors.Join(fmt.Errorf("http proxy CONNECT failed: %s", resp.Status), closeErr)
+		}
+		if err := conn.SetDeadline(time.Time{}); err != nil {
+			closeErr := conn.Close()
+			return nil, fmt.Errorf("clear proxy deadline: %w", errors.Join(err, closeErr))
+		}
+		return conn, nil
+	}
+}
+
+func writeHTTPProxyConnect(conn net.Conn, proxyCfg config.Proxy, address string) error {
+	var b strings.Builder
+	b.WriteString("CONNECT ")
+	b.WriteString(address)
+	b.WriteString(" HTTP/1.1\r\nHost: ")
+	b.WriteString(address)
+	b.WriteString("\r\nProxy-Connection: Keep-Alive\r\n")
+	if proxyCfg.Username != "" || proxyCfg.Password != "" {
+		authValue := base64.StdEncoding.EncodeToString([]byte(proxyCfg.Username + ":" + proxyCfg.Password))
+		b.WriteString("Proxy-Authorization: Basic ")
+		b.WriteString(authValue)
+		b.WriteString("\r\n")
+	}
+	b.WriteString("\r\n")
+	_, err := conn.Write([]byte(b.String()))
+	return err
 }
 
 func (c *Client) defaultRequestClients() requestClients {

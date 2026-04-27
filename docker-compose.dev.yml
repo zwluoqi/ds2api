@@ -23,11 +23,15 @@ services:
     environment:
       - HOST=0.0.0.0
       - LOG_LEVEL=DEBUG
+      - DS2API_CHAT_HISTORY_PATH=/app/data/chat_history.json
+      - DS2API_ACCOUNT_STATS_DIR=/app/data/account_stats
     volumes:
       # 源代码挂载（开发时实时生效）
       - ./:/app
       # 配置文件挂载（便于本地修改）
       - ./config.json:/app/config.json
+      # 运行时数据挂载（对话历史、账号统计等）
+      - ./data:/app/data
     restart: "no"
     stdin_open: true
     tty: true

@@ -794,7 +794,7 @@ data: {"type":"message_stop"}
 
 ### `POST /admin/proxies`
 
-新增代理。请求体支持 `id`（可选，未传则自动生成）、`name`、`type`（`http` / `socks5`）、`host`、`port`、`username`、`password`。
+新增代理。请求体支持 `id`（可选，未传则自动生成）、`name`、`type`（`http` / `socks5` / `socks5h`）、`host`、`port`、`username`、`password`。`http` 代理对 HTTPS 目标使用 CONNECT 隧道。
 
 ### `PUT /admin/proxies/{proxyID}`
 
@@ -831,7 +831,15 @@ data: {"type":"message_stop"}
       "has_password": true,
       "has_token": true,
       "token_preview": "abc...",
-      "test_status": "ok"
+      "test_status": "ok",
+      "stats": {
+        "daily_flash_requests": 12,
+        "daily_pro_requests": 3,
+        "daily_requests": 15,
+        "total_flash_requests": 120,
+        "total_pro_requests": 30,
+        "total_requests": 150
+      }
     }
   ],
   "total": 25,
@@ -840,6 +848,8 @@ data: {"type":"message_stop"}
   "total_pages": 3
 }
 ```
+
+`stats` 为每账号独立统计数据，默认持久化到 `data/account_stats/`，Docker 默认对应容器内 `/app/data/account_stats/`。可通过 `DS2API_ACCOUNT_STATS_DIR` 覆盖目录。
 
 ### `POST /admin/accounts`
 

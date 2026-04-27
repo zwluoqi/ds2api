@@ -62,6 +62,33 @@ func TestAddProxyPersistsNormalizedProxy(t *testing.T) {
 	}
 }
 
+func TestAddHTTPProxyPersistsNormalizedProxy(t *testing.T) {
+	h := newAdminProxyTestHandler(t, `{"accounts":[]}`)
+
+	r := chi.NewRouter()
+	r.Post("/admin/proxies", h.addProxy)
+
+	req := httptest.NewRequest(http.MethodPost, "/admin/proxies", bytes.NewBufferString(`{
+		"name":"HTTP Exit",
+		"type":" HTTP ",
+		"host":" 127.0.0.1 ",
+		"port":8080
+	}`))
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
+	proxies := h.Store.Snapshot().Proxies
+	if len(proxies) != 1 {
+		t.Fatalf("expected 1 proxy, got %d", len(proxies))
+	}
+	if proxies[0].Type != "http" {
+		t.Fatalf("unexpected proxy type: %#v", proxies[0])
+	}
+}
+
 func TestAddProxyDoesNotFailOnUnrelatedInvalidRuntimeConfig(t *testing.T) {
 	router := newHTTPAdminHarness(t, `{
 		"keys":["k1"],

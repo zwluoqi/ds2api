@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Pencil, Play, Plus, Shield, Trash2, X } from 'lucide-react'
+import { Pencil, Play, Plus, Shield, Trash2, Upload, X } from 'lucide-react'
 import clsx from 'clsx'
 
 import { useI18n } from '../../i18n'
@@ -44,6 +44,36 @@ function createEmptyProxyForm() {
     return { ...EMPTY_FORM }
 }
 
+function parseProxyAddress(line) {
+    const raw = String(line || '').trim()
+    if (!raw) return null
+    const hasScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw)
+    if (!hasScheme) {
+        const parts = raw.split(':')
+        if (parts.length === 2 || parts.length === 4) {
+            return {
+                type: 'socks5h',
+                host: parts[0].trim(),
+                port: Number(parts[1]),
+                username: (parts[2] || '').trim(),
+                password: (parts[3] || '').trim(),
+            }
+        }
+    }
+    const url = new URL(hasScheme ? raw : `socks5h://${raw}`)
+    const type = url.protocol.replace(':', '').toLowerCase()
+    if (!['http', 'socks5', 'socks5h'].includes(type)) {
+        throw new Error(`unsupported proxy type: ${type}`)
+    }
+    return {
+        type,
+        host: url.hostname,
+        port: Number(url.port),
+        username: decodeURIComponent(url.username || ''),
+        password: decodeURIComponent(url.password || ''),
+    }
+}
+
 function ProxyStatusBadge({ t, result, testing = false }) {
     if (testing) {
         return (
@@ -81,6 +111,7 @@ function ProxiesTable({
     testing,
     testResults,
     onCreate,
+    onBatchImport,
     onTest,
     onEdit,
     onDelete,
@@ -92,13 +123,22 @@ function ProxiesTable({
                     <h2 className="text-lg font-semibold">{t('proxyManager.title')}</h2>
                     <p className="text-sm text-muted-foreground">{t('proxyManager.desc')}</p>
                 </div>
-                <button
-                    onClick={onCreate}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm shadow-sm"
-                >
-                    <Plus className="w-4 h-4" />
-                    {t('proxyManager.addProxy')}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                    <button
+                        onClick={onBatchImport}
+                        className="flex items-center gap-2 px-3 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors font-medium text-sm border border-border"
+                    >
+                        <Upload className="w-4 h-4" />
+                        {t('proxyManager.batchImport')}
+                    </button>
+                    <button
+                        onClick={onCreate}
+                        className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm shadow-sm"
+                    >
+                        <Plus className="w-4 h-4" />
+                        {t('proxyManager.addProxy')}
+                    </button>
+                </div>
             </div>
 
             {proxies.length === 0 ? (
@@ -223,6 +263,7 @@ function ProxyFormModal({
                                 value={form.type}
                                 onChange={e => setForm({ ...form, type: e.target.value })}
                             >
+                                <option value="http">http</option>
                                 <option value="socks5">socks5</option>
                                 <option value="socks5h">socks5h</option>
                             </select>
@@ -306,14 +347,64 @@ function ProxyFormModal({
     )
 }
 
+function BatchProxyImportModal({ show, t, value, setValue, loading, onClose, onSubmit }) {
+    if (!show) {
+        return null
+    }
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in">
+            <div className="bg-card w-full max-w-2xl rounded-xl border border-border shadow-2xl overflow-hidden animate-in zoom-in-95">
+                <div className="p-4 border-b border-border flex justify-between items-center">
+                    <div>
+                        <h3 className="font-semibold">{t('proxyManager.batchImportTitle')}</h3>
+                        <p className="text-xs text-muted-foreground mt-1">{t('proxyManager.batchImportDesc')}</p>
+                    </div>
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+                <div className="p-6 space-y-4">
+                    <textarea
+                        className="input-field min-h-56 font-mono text-xs"
+                        value={value}
+                        onChange={e => setValue(e.target.value)}
+                        placeholder={t('proxyManager.batchImportPlaceholder')}
+                    />
+                    <div className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                        {t('proxyManager.batchImportHelp')}
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <button
+                            onClick={onClose}
+                            className="px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors text-sm font-medium"
+                        >
+                            {t('actions.cancel')}
+                        </button>
+                        <button
+                            onClick={onSubmit}
+                            disabled={loading}
+                            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium disabled:opacity-50"
+                        >
+                            {loading ? t('proxyManager.saving') : t('proxyManager.batchImportAction')}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
 export default function ProxyManagerContainer({ config, onRefresh, onMessage, authFetch }) {
     const { t } = useI18n()
     const apiFetch = authFetch || fetch
 
     const [showModal, setShowModal] = useState(false)
+    const [showBatchModal, setShowBatchModal] = useState(false)
     const [editingProxy, setEditingProxy] = useState(null)
     const [form, setForm] = useState(createEmptyProxyForm())
+    const [batchText, setBatchText] = useState('')
     const [saving, setSaving] = useState(false)
+    const [batchImporting, setBatchImporting] = useState(false)
     const [testing, setTesting] = useState({})
     const [testResults, setTestResults] = useState({})
 
@@ -342,6 +433,16 @@ export default function ProxyManagerContainer({ config, onRefresh, onMessage, au
         setShowModal(false)
         setEditingProxy(null)
         setForm(createEmptyProxyForm())
+    }
+
+    const openBatchImport = () => {
+        setBatchText('')
+        setShowBatchModal(true)
+    }
+
+    const closeBatchImport = () => {
+        setShowBatchModal(false)
+        setBatchText('')
     }
 
     const saveProxy = async () => {
@@ -403,6 +504,57 @@ export default function ProxyManagerContainer({ config, onRefresh, onMessage, au
         }
     }
 
+    const importProxyBatch = async () => {
+        const lines = batchText.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
+        if (lines.length === 0) {
+            onMessage('error', t('proxyManager.batchImportEmpty'))
+            return
+        }
+        const parsed = []
+        const errors = []
+        lines.forEach((line, index) => {
+            try {
+                const proxy = parseProxyAddress(line)
+                if (!proxy?.host || !proxy.port || proxy.port < 1 || proxy.port > 65535) {
+                    throw new Error(t('proxyManager.requiredFields'))
+                }
+                parsed.push(proxy)
+            } catch (err) {
+                errors.push(`${index + 1}: ${err?.message || line}`)
+            }
+        })
+        if (errors.length > 0) {
+            onMessage('error', t('proxyManager.batchImportParseFailed', { count: errors.length, errors: errors.slice(0, 3).join('; ') }))
+            return
+        }
+        setBatchImporting(true)
+        let imported = 0
+        let failed = 0
+        try {
+            for (const proxy of parsed) {
+                const res = await apiFetch('/admin/proxies', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(proxy),
+                })
+                if (res.ok) {
+                    imported += 1
+                } else {
+                    failed += 1
+                }
+            }
+            await onRefresh?.()
+            onMessage(failed > 0 ? 'error' : 'success', t('proxyManager.batchImportResult', { imported, failed }))
+            if (imported > 0) {
+                closeBatchImport()
+            }
+        } catch (err) {
+            onMessage('error', err?.message || t('messages.networkError'))
+        } finally {
+            setBatchImporting(false)
+        }
+    }
+
     const testProxy = async (proxy) => {
         setTesting(prev => ({ ...prev, [proxy.id]: true }))
         try {
@@ -444,6 +596,7 @@ export default function ProxyManagerContainer({ config, onRefresh, onMessage, au
                 testing={testing}
                 testResults={testResults}
                 onCreate={openCreate}
+                onBatchImport={openBatchImport}
                 onTest={testProxy}
                 onEdit={openEdit}
                 onDelete={deleteProxy}
@@ -458,6 +611,15 @@ export default function ProxyManagerContainer({ config, onRefresh, onMessage, au
                 loading={saving}
                 onClose={closeModal}
                 onSubmit={saveProxy}
+            />
+            <BatchProxyImportModal
+                show={showBatchModal}
+                t={t}
+                value={batchText}
+                setValue={setBatchText}
+                loading={batchImporting}
+                onClose={closeBatchImport}
+                onSubmit={importProxyBatch}
             />
         </div>
     )

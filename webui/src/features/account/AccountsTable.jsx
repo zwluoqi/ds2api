@@ -109,6 +109,7 @@ export default function AccountsTable({
                         const assignedProxy = proxies.find(proxy => proxy.id === acc.proxy_id)
                         const runtimeUnknown = envBacked && !acc.test_status
                         const isActive = acc.test_status === 'ok' || acc.has_token
+                        const stats = acc.stats || {}
                         return (
                             <div key={i} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-muted/50 transition-colors">
                                 <div className="flex items-center gap-3 min-w-0">
@@ -164,6 +165,20 @@ export default function AccountsTable({
                                                     {t('accountManager.proxyBadge', { name: assignedProxy ? (assignedProxy.name || `${assignedProxy.host}:${assignedProxy.port}`) : acc.proxy_id })}
                                                 </span>
                                             )}
+                                            <span className="font-mono bg-sky-500/10 text-sky-600 dark:text-sky-400 px-1.5 py-0.5 rounded text-[10px]">
+                                                {t('accountManager.dailyStatsBadge', {
+                                                    total: stats.daily_requests || 0,
+                                                    flash: stats.daily_flash_requests || 0,
+                                                    pro: stats.daily_pro_requests || 0,
+                                                })}
+                                            </span>
+                                            <span className="font-mono bg-violet-500/10 text-violet-600 dark:text-violet-400 px-1.5 py-0.5 rounded text-[10px]">
+                                                {t('accountManager.totalStatsBadge', {
+                                                    total: stats.total_requests || 0,
+                                                    flash: stats.total_flash_requests || 0,
+                                                    pro: stats.total_pro_requests || 0,
+                                                })}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>

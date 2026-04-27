@@ -104,6 +104,9 @@ func (h *Handler) ChatCompletions(w http.ResponseWriter, r *http.Request) {
 		writeOpenAIError(w, http.StatusInternalServerError, "Failed to get completion.")
 		return
 	}
+	if resp.StatusCode == http.StatusOK {
+		h.recordAccountRequest(a, stdReq.ResolvedModel)
+	}
 	if stdReq.Stream {
 		h.handleStream(w, r, resp, sessionID, stdReq.ResponseModel, stdReq.FinalPrompt, stdReq.Thinking, stdReq.Search, stdReq.ToolNames, historySession)
 		return
@@ -268,4 +271,13 @@ func (h *Handler) handleStream(w http.ResponseWriter, r *http.Request, resp *htt
 			}
 		},
 	})
+}
+
+func (h *Handler) recordAccountRequest(a *auth.RequestAuth, model string) {
+	if h == nil || h.Stats == nil || a == nil || !a.UseConfigToken || strings.TrimSpace(a.AccountID) == "" {
+		return
+	}
+	if err := h.Stats.Record(a.AccountID, model); err != nil {
+		config.Logger.Warn("[account_stats] record failed", "account", a.AccountID, "model", model, "error", err)
+	}
 }
