@@ -849,7 +849,7 @@ data: {"type":"message_stop"}
 }
 ```
 
-`stats` 为每账号独立统计数据，默认持久化到 `data/account_stats/`，Docker 默认对应容器内 `/app/data/account_stats/`。可通过 `DS2API_ACCOUNT_STATS_DIR` 覆盖目录。
+`stats` 为每账号独立统计数据，默认持久化到 `data/account_stats/`，Docker 默认对应容器内 `/app/data/account_stats/`。可通过 `DS2API_ACCOUNT_STATS_DIR` 覆盖目录。账号登录 token 不写入 `config.json`，会按账号独立持久化到 `data/account_tokens/`（Docker 默认 `/app/data/account_tokens/`），可通过 `DS2API_ACCOUNT_TOKENS_DIR` 覆盖。
 
 ### `POST /admin/accounts`
 

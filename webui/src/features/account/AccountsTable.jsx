@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { ChevronLeft, ChevronRight, Check, Copy, Pencil, Play, Plus, Trash2, FolderX } from 'lucide-react'
 import clsx from 'clsx'
 
+const statValue = (value) => Number(value || 0)
+
 export default function AccountsTable({
     t,
     accounts,
@@ -110,16 +112,22 @@ export default function AccountsTable({
                         const runtimeUnknown = envBacked && !acc.test_status
                         const isActive = acc.test_status === 'ok' || acc.has_token
                         const stats = acc.stats || {}
+                        const statItems = [
+                            { label: t('accountManager.statsDailyFlash'), value: stats.daily_flash_requests },
+                            { label: t('accountManager.statsDailyPro'), value: stats.daily_pro_requests },
+                            { label: t('accountManager.statsTotalFlash'), value: stats.total_flash_requests },
+                            { label: t('accountManager.statsTotalPro'), value: stats.total_pro_requests },
+                        ]
                         return (
                             <div key={i} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-muted/50 transition-colors">
-                                <div className="flex items-center gap-3 min-w-0">
+                                <div className="flex items-start gap-3 min-w-0 flex-1">
                                     <div className={clsx(
-                                        "w-2 h-2 rounded-full shrink-0",
+                                        "w-2 h-2 rounded-full shrink-0 mt-2",
                                         acc.test_status === 'failed' ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" :
                                         isActive ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" :
                                         runtimeUnknown ? "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" : "bg-amber-500"
                                     )} />
-                                    <div className="min-w-0">
+                                    <div className="min-w-0 w-full">
                                         <div className="text-sm font-medium truncate">{acc.name || '-'}</div>
                                         <div
                                             className="font-medium truncate flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors group"
@@ -165,20 +173,14 @@ export default function AccountsTable({
                                                     {t('accountManager.proxyBadge', { name: assignedProxy ? (assignedProxy.name || `${assignedProxy.host}:${assignedProxy.port}`) : acc.proxy_id })}
                                                 </span>
                                             )}
-                                            <span className="font-mono bg-sky-500/10 text-sky-600 dark:text-sky-400 px-1.5 py-0.5 rounded text-[10px]">
-                                                {t('accountManager.dailyStatsBadge', {
-                                                    total: stats.daily_requests || 0,
-                                                    flash: stats.daily_flash_requests || 0,
-                                                    pro: stats.daily_pro_requests || 0,
-                                                })}
-                                            </span>
-                                            <span className="font-mono bg-violet-500/10 text-violet-600 dark:text-violet-400 px-1.5 py-0.5 rounded text-[10px]">
-                                                {t('accountManager.totalStatsBadge', {
-                                                    total: stats.total_requests || 0,
-                                                    flash: stats.total_flash_requests || 0,
-                                                    pro: stats.total_pro_requests || 0,
-                                                })}
-                                            </span>
+                                        </div>
+                                        <div className="mt-2 grid grid-cols-2 lg:grid-cols-4 gap-1.5 max-w-2xl">
+                                            {statItems.map(item => (
+                                                <div key={item.label} className="rounded-md border border-border/70 bg-background/70 px-2 py-1.5 min-w-0">
+                                                    <div className="text-[10px] leading-none text-muted-foreground truncate">{item.label}</div>
+                                                    <div className="mt-1 text-sm leading-none font-semibold tabular-nums text-foreground">{statValue(item.value)}</div>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 </div>

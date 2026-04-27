@@ -54,6 +54,7 @@ func TestMaskSecretPreviewKeepsOnlyFirstAndLastTwoChars(t *testing.T) {
 }
 
 func TestGetConfigMasksAccountTokenPreview(t *testing.T) {
+	t.Setenv("DS2API_ACCOUNT_TOKENS_DIR", t.TempDir())
 	h := newAdminTestHandler(t, `{
 		"accounts":[{"email":"u@example.com","password":"pwd"}]
 	}`)

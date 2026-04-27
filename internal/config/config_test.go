@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -322,6 +323,7 @@ func TestRuntimeTokenRefreshIntervalHoursUsesConfigValue(t *testing.T) {
 }
 
 func TestStoreUpdateAccountTokenKeepsIdentifierResolvable(t *testing.T) {
+	t.Setenv("DS2API_ACCOUNT_TOKENS_DIR", t.TempDir())
 	t.Setenv("DS2API_CONFIG_JSON", `{
 		"accounts":[{"email":"user@example.com","password":"p"}]
 	}`)
@@ -338,6 +340,69 @@ func TestStoreUpdateAccountTokenKeepsIdentifierResolvable(t *testing.T) {
 
 	if got, ok := store.FindAccount(oldID); !ok || got.Token != "new-token" {
 		t.Fatalf("expected find by stable account identifier")
+	}
+}
+
+func TestStoreUpdateAccountTokenPersistsOutsideConfig(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.json")
+	tokenDir := filepath.Join(dir, "account_tokens")
+	if err := os.WriteFile(configPath, []byte(`{
+		"accounts":[{"email":"u@example.com","password":"p"}]
+	}`), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	t.Setenv("DS2API_CONFIG_JSON", "")
+	t.Setenv("DS2API_CONFIG_PATH", configPath)
+	t.Setenv("DS2API_ACCOUNT_TOKENS_DIR", tokenDir)
+
+	store := LoadStore()
+	if err := store.UpdateAccountToken("u@example.com", "persisted-token"); err != nil {
+		t.Fatalf("update account token: %v", err)
+	}
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("read config: %v", err)
+	}
+	if strings.Contains(string(content), "persisted-token") {
+		t.Fatalf("expected config file not to contain token, got: %s", content)
+	}
+	tokenContent, err := os.ReadFile(filepath.Join(tokenDir, accountTokenFileName("u@example.com")))
+	if err != nil {
+		t.Fatalf("read token file: %v", err)
+	}
+	if !strings.Contains(string(tokenContent), "persisted-token") {
+		t.Fatalf("expected token file to contain token, got: %s", tokenContent)
+	}
+
+	reloaded := LoadStore()
+	if got, ok := reloaded.FindAccount("u@example.com"); !ok || got.Token != "persisted-token" {
+		t.Fatalf("expected persisted token after reload, got %#v ok=%v", got, ok)
+	}
+}
+
+func TestStoreUpdateAccountTokenClearsPersistedToken(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.json")
+	tokenDir := filepath.Join(dir, "account_tokens")
+	if err := os.WriteFile(configPath, []byte(`{
+		"accounts":[{"email":"u@example.com","password":"p"}]
+	}`), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	t.Setenv("DS2API_CONFIG_JSON", "")
+	t.Setenv("DS2API_CONFIG_PATH", configPath)
+	t.Setenv("DS2API_ACCOUNT_TOKENS_DIR", tokenDir)
+
+	store := LoadStore()
+	if err := store.UpdateAccountToken("u@example.com", "persisted-token"); err != nil {
+		t.Fatalf("update account token: %v", err)
+	}
+	if err := store.UpdateAccountToken("u@example.com", ""); err != nil {
+		t.Fatalf("clear account token: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(tokenDir, accountTokenFileName("u@example.com"))); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected token file removed, stat err=%v", err)
 	}
 }
 

@@ -47,6 +47,12 @@ func (h *Handler) listAccounts(w http.ResponseWriter, r *http.Request) {
 	if total > 0 {
 		totalPages = (total + pageSize - 1) / pageSize
 	}
+	statIDs := make([]string, 0, len(accounts))
+	for _, acc := range accounts {
+		if id := acc.Identifier(); id != "" {
+			statIDs = append(statIDs, id)
+		}
+	}
 	start := (page - 1) * pageSize
 	if start > total {
 		start = total
@@ -74,7 +80,14 @@ func (h *Handler) listAccounts(w http.ResponseWriter, r *http.Request) {
 			"stats":         h.accountStatsSummary(acc.Identifier()),
 		})
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items, "total": total, "page": page, "page_size": pageSize, "total_pages": totalPages})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"items":         items,
+		"total":         total,
+		"page":          page,
+		"page_size":     pageSize,
+		"total_pages":   totalPages,
+		"stats_summary": h.accountStatsSummaryAccounts(statIDs),
+	})
 }
 
 func (h *Handler) accountStatsSummary(identifier string) any {
@@ -82,6 +95,13 @@ func (h *Handler) accountStatsSummary(identifier string) any {
 		return nil
 	}
 	return h.Stats.Summary(identifier)
+}
+
+func (h *Handler) accountStatsSummaryAccounts(identifiers []string) any {
+	if h == nil || h.Stats == nil {
+		return nil
+	}
+	return h.Stats.SummaryAccounts(identifiers)
 }
 
 func (h *Handler) addAccount(w http.ResponseWriter, r *http.Request) {

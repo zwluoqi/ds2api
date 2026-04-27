@@ -10,6 +10,7 @@ export function useAccountsData({ apiFetch }) {
     const [totalPages, setTotalPages] = useState(1)
     const [totalAccounts, setTotalAccounts] = useState(0)
     const [loadingAccounts, setLoadingAccounts] = useState(false)
+    const [accountStatsSummary, setAccountStatsSummary] = useState({})
 
     const resolveAccountIdentifier = (acc) => {
         if (!acc || typeof acc !== 'object') return ''
@@ -30,6 +31,7 @@ export function useAccountsData({ apiFetch }) {
                 setTotalPages(data.total_pages || 1)
                 setTotalAccounts(data.total || 0)
                 setPage(data.page || 1)
+                setAccountStatsSummary(data.stats_summary || {})
             }
         } catch (e) {
             console.error('Failed to fetch accounts:', e)
@@ -76,6 +78,7 @@ export function useAccountsData({ apiFetch }) {
         pageSize,
         totalPages,
         totalAccounts,
+        accountStatsSummary,
         loadingAccounts,
         fetchAccounts,
         changePageSize,

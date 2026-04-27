@@ -21,6 +21,7 @@ export default function AccountManagerContainer({ config, onRefresh, onMessage, 
         pageSize,
         totalPages,
         totalAccounts,
+        accountStatsSummary,
         loadingAccounts,
         fetchAccounts,
         changePageSize,
@@ -99,7 +100,7 @@ export default function AccountManagerContainer({ config, onRefresh, onMessage, 
                 </div>
             )}
 
-            <QueueCards queueStatus={queueStatus} t={t} />
+            <QueueCards queueStatus={queueStatus} accountStatsSummary={accountStatsSummary} t={t} />
 
             <ApiKeysPanel
                 t={t}

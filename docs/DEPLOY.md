@@ -258,6 +258,7 @@ VERCEL_TEAM_ID=team_xxxxxxxxxxxx   # 个人账号可留空
 | `DS2API_GLOBAL_MAX_INFLIGHT` | 全局并发上限 | `recommended_concurrency` |
 | `DS2API_ENV_WRITEBACK` | 检测到 `DS2API_CONFIG_JSON` 时自动写入 `DS2API_CONFIG_PATH`，并在成功后转为文件模式（`1/true/yes/on`） | 关闭 |
 | `DS2API_ACCOUNT_STATS_DIR` | 每账号请求统计文件目录 | `data/account_stats` |
+| `DS2API_ACCOUNT_TOKENS_DIR` | 每账号运行时 token 文件目录；用于跨容器重启复用登录 token，不写入 `config.json` | `data/account_tokens` |
 | `DS2API_VERCEL_INTERNAL_SECRET` | 混合流式内部鉴权 | 回退用 `DS2API_ADMIN_KEY` |
 | `DS2API_VERCEL_STREAM_LEASE_TTL_SECONDS` | 流式 lease TTL | `900` |
 | `DS2API_RAW_STREAM_SAMPLE_ROOT` | raw stream 样本保存/读取根目录 | `tests/raw_stream_samples` |

@@ -17,3 +17,4 @@ services:
       - DS2API_ADMIN_KEY=${DS2API_ADMIN_KEY:-ds2api}
       - DS2API_CHAT_HISTORY_PATH=/app/data/chat_history.json
       - DS2API_ACCOUNT_STATS_DIR=/app/data/account_stats
+      - DS2API_ACCOUNT_TOKENS_DIR=/app/data/account_tokens

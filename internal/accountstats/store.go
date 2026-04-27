@@ -110,6 +110,20 @@ func (s *Store) Summary(accountID string) Summary {
 	}
 }
 
+func (s *Store) SummaryAccounts(accountIDs []string) Summary {
+	var total Summary
+	for _, accountID := range accountIDs {
+		summary := s.Summary(accountID)
+		total.DailyFlashRequests += summary.DailyFlashRequests
+		total.DailyProRequests += summary.DailyProRequests
+		total.DailyRequests += summary.DailyRequests
+		total.TotalFlashRequests += summary.TotalFlashRequests
+		total.TotalProRequests += summary.TotalProRequests
+		total.TotalRequests += summary.TotalRequests
+	}
+	return total
+}
+
 func (s *Store) Path(accountID string) string {
 	if s == nil {
 		return ""

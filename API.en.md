@@ -843,7 +843,7 @@ Tests proxy connectivity: provide `proxy_id` to test a saved proxy; omit it to r
 }
 ```
 
-Returned items also include `test_status`, usually `ok` or `failed`. `stats` is stored independently per account under `data/account_stats/` by default, which maps to `/app/data/account_stats/` in Docker. Override it with `DS2API_ACCOUNT_STATS_DIR` when needed.
+Returned items also include `test_status`, usually `ok` or `failed`. `stats` is stored independently per account under `data/account_stats/` by default, which maps to `/app/data/account_stats/` in Docker. Override it with `DS2API_ACCOUNT_STATS_DIR` when needed. Account login tokens are not written to `config.json`; they are stored independently under `data/account_tokens/` (Docker default: `/app/data/account_tokens/`) and can be overridden with `DS2API_ACCOUNT_TOKENS_DIR`.
 
 ### `POST /admin/accounts`
 

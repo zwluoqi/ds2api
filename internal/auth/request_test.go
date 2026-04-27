@@ -198,6 +198,7 @@ func TestDetermineCallerMissingToken(t *testing.T) {
 }
 
 func TestDetermineManagedAccountForcesRefreshEverySixHours(t *testing.T) {
+	t.Setenv("DS2API_ACCOUNT_TOKENS_DIR", t.TempDir())
 	t.Setenv("DS2API_CONFIG_JSON", `{
 		"keys":["managed-key"],
 		"accounts":[{"email":"acc@example.com","password":"pwd","token":"seed-token"}]
@@ -247,6 +248,7 @@ func TestDetermineManagedAccountForcesRefreshEverySixHours(t *testing.T) {
 }
 
 func TestDetermineManagedAccountUsesUpdatedRefreshInterval(t *testing.T) {
+	t.Setenv("DS2API_ACCOUNT_TOKENS_DIR", t.TempDir())
 	t.Setenv("DS2API_CONFIG_JSON", `{
 		"keys":["managed-key"],
 		"accounts":[{"email":"acc@example.com","password":"pwd","token":"seed-token"}],

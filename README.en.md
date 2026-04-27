@@ -206,7 +206,7 @@ cp config.example.json config.json
 docker-compose up -d
 ```
 
-The default `docker-compose.yml` uses `ghcr.io/cjackhwang/ds2api:latest`, maps host port `6011` to container port `5001`, and mounts `./config.json:/app/config.json` plus `./data:/app/data`. Account stats default to `/app/data/account_stats/` inside the container. If you want `5001` exposed directly, set `DS2API_HOST_PORT=5001` (or adjust the `ports` mapping).
+The default `docker-compose.yml` uses `ghcr.io/cjackhwang/ds2api:latest`, maps host port `6011` to container port `5001`, and mounts `./config.json:/app/config.json` plus `./data:/app/data`. Account stats default to `/app/data/account_stats/`, and runtime tokens default to `/app/data/account_tokens/` without being written to `config.json`. If you want `5001` exposed directly, set `DS2API_HOST_PORT=5001` (or adjust the `ports` mapping).
 
 Rebuild after updates: `docker-compose up -d --build`
 

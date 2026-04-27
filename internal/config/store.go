@@ -11,13 +11,14 @@ import (
 )
 
 type Store struct {
-	mu      sync.RWMutex
-	cfg     Config
-	path    string
-	fromEnv bool
-	keyMap  map[string]struct{} // O(1) API key lookup index
-	accMap  map[string]int      // O(1) account lookup: identifier -> slice index
-	accTest map[string]string   // runtime-only account test status cache
+	mu       sync.RWMutex
+	cfg      Config
+	path     string
+	tokenDir string
+	fromEnv  bool
+	keyMap   map[string]struct{} // O(1) API key lookup index
+	accMap   map[string]int      // O(1) account lookup: identifier -> slice index
+	accTest  map[string]string   // runtime-only account test status cache
 }
 
 func LoadStore() *Store {
@@ -47,7 +48,11 @@ func loadStore() (*Store, error) {
 	if validateErr := ValidateConfig(cfg); validateErr != nil {
 		err = errors.Join(err, validateErr)
 	}
-	return &Store{cfg: cfg, path: ConfigPath(), fromEnv: fromEnv}, err
+	store := &Store{cfg: cfg, path: ConfigPath(), tokenDir: AccountTokensDir(), fromEnv: fromEnv}
+	if tokenErr := store.loadPersistedAccountTokens(); tokenErr != nil {
+		Logger.Warn("[account_tokens] load failed", "dir", store.tokenDir, "error", tokenErr)
+	}
+	return store, err
 }
 
 func loadConfig() (Config, bool, error) {
@@ -203,6 +208,7 @@ func (s *Store) UpdateAccountToken(identifier, token string) error {
 	if newID != "" {
 		s.accMap[newID] = idx
 	}
+	s.persistAccountTokenBestEffort(newID, token)
 	return s.saveLocked()
 }
 
@@ -228,44 +234,6 @@ func (s *Store) Update(mutator func(*Config) error) error {
 	s.cfg = cfg
 	s.rebuildIndexes()
 	return s.saveLocked()
-}
-
-func (s *Store) Save() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.fromEnv && (IsVercel() || !envWritebackEnabled()) {
-		Logger.Info("[save_config] source from env, skip write")
-		return nil
-	}
-	persistCfg := s.cfg.Clone()
-	persistCfg.ClearAccountTokens()
-	b, err := json.MarshalIndent(persistCfg, "", "  ")
-	if err != nil {
-		return err
-	}
-	if err := writeConfigBytes(s.path, b); err != nil {
-		return err
-	}
-	s.fromEnv = false
-	return nil
-}
-
-func (s *Store) saveLocked() error {
-	if s.fromEnv && (IsVercel() || !envWritebackEnabled()) {
-		Logger.Info("[save_config] source from env, skip write")
-		return nil
-	}
-	persistCfg := s.cfg.Clone()
-	persistCfg.ClearAccountTokens()
-	b, err := json.MarshalIndent(persistCfg, "", "  ")
-	if err != nil {
-		return err
-	}
-	if err := writeConfigBytes(s.path, b); err != nil {
-		return err
-	}
-	s.fromEnv = false
-	return nil
 }
 
 func (s *Store) IsEnvBacked() bool {

@@ -93,6 +93,7 @@ func TestUpdateAccountMetadataPreservesCredentials(t *testing.T) {
 }
 
 func TestUpdateAccountDeviceIDClearsRuntimeToken(t *testing.T) {
+	t.Setenv("DS2API_ACCOUNT_TOKENS_DIR", t.TempDir())
 	h := newAdminTestHandler(t, `{
 		"accounts":[{"email":"u@example.com","password":"secret","device_id":"old-device"}]
 	}`)
@@ -121,6 +122,7 @@ func TestUpdateAccountDeviceIDClearsRuntimeToken(t *testing.T) {
 }
 
 func TestListAccountsMasksTokenPreview(t *testing.T) {
+	t.Setenv("DS2API_ACCOUNT_TOKENS_DIR", t.TempDir())
 	h := newAdminTestHandler(t, `{
 		"accounts":[{"email":"u@example.com","password":"pwd"}]
 	}`)
@@ -152,13 +154,19 @@ func TestListAccountsMasksTokenPreview(t *testing.T) {
 
 func TestListAccountsIncludesStats(t *testing.T) {
 	h := newAdminTestHandler(t, `{
-		"accounts":[{"email":"u@example.com","password":"pwd"}]
+		"accounts":[
+			{"email":"u@example.com","password":"pwd"},
+			{"email":"v@example.com","password":"pwd"}
+		]
 	}`)
 	h.Stats = accountstats.New(t.TempDir())
 	if err := h.Stats.Record("u@example.com", "deepseek-v4-flash"); err != nil {
 		t.Fatalf("seed stats: %v", err)
 	}
 	if err := h.Stats.Record("u@example.com", "deepseek-v4-pro"); err != nil {
+		t.Fatalf("seed stats: %v", err)
+	}
+	if err := h.Stats.Record("v@example.com", "deepseek-v4-pro"); err != nil {
 		t.Fatalf("seed stats: %v", err)
 	}
 
@@ -175,7 +183,7 @@ func TestListAccountsIncludesStats(t *testing.T) {
 		t.Fatalf("decode response failed: %v", err)
 	}
 	items, _ := payload["items"].([]any)
-	first, _ := items[0].(map[string]any)
+	first, _ := items[1].(map[string]any)
 	stats, _ := first["stats"].(map[string]any)
 	if got, _ := stats["daily_requests"].(float64); got != 2 {
 		t.Fatalf("expected daily requests=2, got %#v", stats)
@@ -185,5 +193,12 @@ func TestListAccountsIncludesStats(t *testing.T) {
 	}
 	if got, _ := stats["total_pro_requests"].(float64); got != 1 {
 		t.Fatalf("expected total pro requests=1, got %#v", stats)
+	}
+	summary, _ := payload["stats_summary"].(map[string]any)
+	if got, _ := summary["total_flash_requests"].(float64); got != 1 {
+		t.Fatalf("expected summary total flash requests=1, got %#v", summary)
+	}
+	if got, _ := summary["total_pro_requests"].(float64); got != 2 {
+		t.Fatalf("expected summary total pro requests=2, got %#v", summary)
 	}
 }

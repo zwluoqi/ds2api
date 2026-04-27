@@ -208,7 +208,7 @@ docker-compose up -d
 docker-compose logs -f
 ```
 
-默认 `docker-compose.yml` 会把宿主机 `6011` 映射到容器内的 `5001`，并挂载 `./config.json:/app/config.json`、`./data:/app/data`。账号统计默认写入容器内 `/app/data/account_stats/`。如果你希望直接对外暴露 `5001`，请设置 `DS2API_HOST_PORT=5001`（或者手动调整 `ports` 配置）。
+默认 `docker-compose.yml` 会把宿主机 `6011` 映射到容器内的 `5001`，并挂载 `./config.json:/app/config.json`、`./data:/app/data`。账号统计默认写入容器内 `/app/data/account_stats/`，运行时 token 默认写入 `/app/data/account_tokens/`，不会写入 `config.json`。如果你希望直接对外暴露 `5001`，请设置 `DS2API_HOST_PORT=5001`（或者手动调整 `ports` 配置）。
 
 更新镜像：`docker-compose up -d --build`
 

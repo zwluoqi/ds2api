@@ -45,6 +45,10 @@ func AccountStatsDir() string {
 	return ResolvePath("DS2API_ACCOUNT_STATS_DIR", "data/account_stats")
 }
 
+func AccountTokensDir() string {
+	return ResolvePath("DS2API_ACCOUNT_TOKENS_DIR", "data/account_tokens")
+}
+
 func StaticAdminDir() string {
 	return ResolvePath("DS2API_STATIC_ADMIN_DIR", "static/admin")
 }

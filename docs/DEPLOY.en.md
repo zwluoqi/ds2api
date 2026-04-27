@@ -258,6 +258,7 @@ VERCEL_TEAM_ID=team_xxxxxxxxxxxx   # optional for personal accounts
 | `DS2API_GLOBAL_MAX_INFLIGHT` | Global inflight limit | `recommended_concurrency` |
 | `DS2API_ENV_WRITEBACK` | When `DS2API_CONFIG_JSON` is present, auto-write to `DS2API_CONFIG_PATH` and switch to file-backed mode after success (`1/true/yes/on`) | Disabled |
 | `DS2API_ACCOUNT_STATS_DIR` | Per-account request stats directory | `data/account_stats` |
+| `DS2API_ACCOUNT_TOKENS_DIR` | Per-account runtime token directory; reuses login tokens across container restarts without writing them to `config.json` | `data/account_tokens` |
 | `DS2API_VERCEL_INTERNAL_SECRET` | Hybrid streaming internal auth | Falls back to `DS2API_ADMIN_KEY` |
 | `DS2API_VERCEL_STREAM_LEASE_TTL_SECONDS` | Stream lease TTL | `900` |
 | `DS2API_RAW_STREAM_SAMPLE_ROOT` | Raw stream sample root for saving/reading samples | `tests/raw_stream_samples` |
