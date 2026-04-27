@@ -4,9 +4,11 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"ds2api/internal/config"
 )
 
-func (p *Pool) ApplyRuntimeLimits(maxInflightPerAccount, maxQueueSize, globalMaxInflight int) {
+func (p *Pool) ApplyRuntimeLimits(maxInflightPerAccount, maxQueueSize, globalMaxInflight int, selectionMode string) {
 	if maxInflightPerAccount <= 0 {
 		maxInflightPerAccount = 1
 	}
@@ -19,12 +21,20 @@ func (p *Pool) ApplyRuntimeLimits(maxInflightPerAccount, maxQueueSize, globalMax
 			globalMaxInflight = maxInflightPerAccount
 		}
 	}
+	selectionMode = config.NormalizeAccountSelectionMode(selectionMode)
+	if selectionMode == "" {
+		selectionMode = config.AccountSelectionTokenFirst
+	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.maxInflightPerAccount = maxInflightPerAccount
 	p.maxQueueSize = maxQueueSize
 	p.globalMaxInflight = globalMaxInflight
 	p.recommendedConcurrency = defaultRecommendedConcurrency(len(p.queue), p.maxInflightPerAccount)
+	if p.selectionMode != selectionMode {
+		p.queue = p.accountIDsForSelectionMode(selectionMode)
+		p.selectionMode = selectionMode
+	}
 	p.notifyWaiterLocked()
 }
 

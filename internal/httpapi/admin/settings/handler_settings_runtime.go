@@ -17,6 +17,9 @@ func validateMergedRuntimeSettings(current config.RuntimeConfig, incoming *confi
 		if incoming.TokenRefreshIntervalHours > 0 {
 			merged.TokenRefreshIntervalHours = incoming.TokenRefreshIntervalHours
 		}
+		if incoming.AccountSelectionMode != "" {
+			merged.AccountSelectionMode = incoming.AccountSelectionMode
+		}
 	}
 	return validateRuntimeSettings(merged)
 }
@@ -30,7 +33,8 @@ func (h *Handler) applyRuntimeSettings() {
 	recommended := defaultRuntimeRecommended(accountCount, maxPer)
 	maxQueue := h.Store.RuntimeAccountMaxQueue(recommended)
 	global := h.Store.RuntimeGlobalMaxInflight(recommended)
-	h.Pool.ApplyRuntimeLimits(maxPer, maxQueue, global)
+	selectionMode := h.Store.RuntimeAccountSelectionMode()
+	h.Pool.ApplyRuntimeLimits(maxPer, maxQueue, global, selectionMode)
 }
 
 func defaultRuntimeRecommended(accountCount, maxPer int) int {

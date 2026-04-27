@@ -47,6 +47,25 @@ func TestGetSettingsIncludesTokenRefreshInterval(t *testing.T) {
 	}
 }
 
+func TestGetSettingsIncludesAccountSelectionMode(t *testing.T) {
+	h := newAdminTestHandler(t, `{
+		"keys":["k1"],
+		"runtime":{"account_selection_mode":"round_robin"}
+	}`)
+	req := httptest.NewRequest(http.MethodGet, "/admin/settings", nil)
+	rec := httptest.NewRecorder()
+	h.getSettings(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var body map[string]any
+	_ = json.Unmarshal(rec.Body.Bytes(), &body)
+	runtime, _ := body["runtime"].(map[string]any)
+	if got, _ := runtime["account_selection_mode"].(string); got != "round_robin" {
+		t.Fatalf("expected account_selection_mode=round_robin, got %q body=%v", got, body)
+	}
+}
+
 func TestGetSettingsIncludesHistorySplitDefaults(t *testing.T) {
 	h := newAdminTestHandler(t, `{"keys":["k1"]}`)
 	req := httptest.NewRequest(http.MethodGet, "/admin/settings", nil)
@@ -63,6 +82,44 @@ func TestGetSettingsIncludesHistorySplitDefaults(t *testing.T) {
 	}
 	if got := intFrom(historySplit["trigger_after_turns"]); got != 1 {
 		t.Fatalf("expected history_split.trigger_after_turns=1, got %d body=%v", got, body)
+	}
+}
+
+func TestUpdateSettingsAccountSelectionMode(t *testing.T) {
+	h := newAdminTestHandler(t, `{"keys":["k1"]}`)
+	payload := map[string]any{
+		"runtime": map[string]any{
+			"account_selection_mode": "round_robin",
+		},
+	}
+	b, _ := json.Marshal(payload)
+	req := httptest.NewRequest(http.MethodPut, "/admin/settings", bytes.NewReader(b))
+	rec := httptest.NewRecorder()
+	h.updateSettings(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if got := h.Store.Snapshot().Runtime.AccountSelectionMode; got != "round_robin" {
+		t.Fatalf("expected stored account_selection_mode=round_robin, got %q", got)
+	}
+}
+
+func TestUpdateSettingsRejectsInvalidAccountSelectionMode(t *testing.T) {
+	h := newAdminTestHandler(t, `{"keys":["k1"]}`)
+	payload := map[string]any{
+		"runtime": map[string]any{
+			"account_selection_mode": "unknown",
+		},
+	}
+	b, _ := json.Marshal(payload)
+	req := httptest.NewRequest(http.MethodPut, "/admin/settings", bytes.NewReader(b))
+	rec := httptest.NewRecorder()
+	h.updateSettings(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte("runtime.account_selection_mode")) {
+		t.Fatalf("expected account selection validation detail, got %s", rec.Body.String())
 	}
 }
 

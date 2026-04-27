@@ -159,6 +159,18 @@ func (s *Store) RuntimeTokenRefreshIntervalHours() int {
 	return 6
 }
 
+func (s *Store) RuntimeAccountSelectionMode() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if strings.TrimSpace(s.cfg.Runtime.AccountSelectionMode) != "" {
+		return NormalizeAccountSelectionMode(s.cfg.Runtime.AccountSelectionMode)
+	}
+	if raw := strings.TrimSpace(os.Getenv("DS2API_ACCOUNT_SELECTION_MODE")); raw != "" {
+		return NormalizeAccountSelectionMode(raw)
+	}
+	return AccountSelectionTokenFirst
+}
+
 func (s *Store) AutoDeleteSessions() bool {
 	return s.AutoDeleteMode() != "none"
 }

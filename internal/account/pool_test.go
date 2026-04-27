@@ -2,12 +2,23 @@ package account
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
 	"ds2api/internal/config"
 )
+
+func writeTempConfig(t *testing.T, raw string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(path, []byte(raw), 0o644); err != nil {
+		t.Fatalf("write temp config: %v", err)
+	}
+	return path
+}
 
 func newPoolForTest(t *testing.T, maxInflight string) *Pool {
 	t.Helper()
@@ -233,6 +244,48 @@ func TestPoolAcquireRotatesIntoTokenlessAccounts(t *testing.T) {
 			t.Fatalf("unexpected account at step %d: got %q want %q", i+1, got, want)
 		}
 		pool.Release(acc.Identifier())
+	}
+}
+
+func TestPoolSelectionTokenFirstPrefersSignedInAccounts(t *testing.T) {
+	t.Setenv("DS2API_CONFIG_JSON", "")
+	t.Setenv("DS2API_CONFIG_PATH", writeTempConfig(t, `{
+		"keys":["k1"],
+		"accounts":[
+			{"email":"needs-login@example.com","password":"pwd"},
+			{"email":"signed-in@example.com","password":"pwd","token":"token1"}
+		],
+		"runtime":{"account_max_inflight":1,"account_selection_mode":"token_first"}
+	}`))
+
+	pool := NewPool(config.LoadStore())
+	acc, ok := pool.Acquire("", nil)
+	if !ok {
+		t.Fatal("expected acquire success")
+	}
+	if got := acc.Identifier(); got != "signed-in@example.com" {
+		t.Fatalf("expected signed-in account first, got %q", got)
+	}
+}
+
+func TestPoolSelectionRoundRobinKeepsConfiguredOrder(t *testing.T) {
+	t.Setenv("DS2API_CONFIG_JSON", "")
+	t.Setenv("DS2API_CONFIG_PATH", writeTempConfig(t, `{
+		"keys":["k1"],
+		"accounts":[
+			{"email":"needs-login@example.com","password":"pwd"},
+			{"email":"signed-in@example.com","password":"pwd","token":"token1"}
+		],
+		"runtime":{"account_max_inflight":1,"account_selection_mode":"round_robin"}
+	}`))
+
+	pool := NewPool(config.LoadStore())
+	acc, ok := pool.Acquire("", nil)
+	if !ok {
+		t.Fatal("expected acquire success")
+	}
+	if got := acc.Identifier(); got != "needs-login@example.com" {
+		t.Fatalf("expected configured-order account first, got %q", got)
 	}
 }
 

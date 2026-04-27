@@ -48,6 +48,9 @@ func (h *Handler) updateSettings(w http.ResponseWriter, r *http.Request) {
 			if runtimeCfg.TokenRefreshIntervalHours > 0 {
 				c.Runtime.TokenRefreshIntervalHours = runtimeCfg.TokenRefreshIntervalHours
 			}
+			if runtimeCfg.AccountSelectionMode != "" {
+				c.Runtime.AccountSelectionMode = runtimeCfg.AccountSelectionMode
+			}
 		}
 		if compatCfg != nil {
 			if compatCfg.WideInputStrictOutput != nil {

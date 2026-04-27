@@ -256,6 +256,7 @@ VERCEL_TEAM_ID=team_xxxxxxxxxxxx   # 个人账号可留空
 | `DS2API_ACCOUNT_MAX_INFLIGHT` | 每账号并发上限 | `2` |
 | `DS2API_ACCOUNT_MAX_QUEUE` | 等待队列上限 | `recommended_concurrency` |
 | `DS2API_GLOBAL_MAX_INFLIGHT` | 全局并发上限 | `recommended_concurrency` |
+| `DS2API_ACCOUNT_SELECTION_MODE` | 账号选择机制：`token_first` 优先已登录账号，`round_robin` 严格按配置顺序轮询 | `token_first` |
 | `DS2API_ENV_WRITEBACK` | 检测到 `DS2API_CONFIG_JSON` 时自动写入 `DS2API_CONFIG_PATH`，并在成功后转为文件模式（`1/true/yes/on`） | 关闭 |
 | `DS2API_ACCOUNT_STATS_DIR` | 每账号请求统计文件目录 | `data/account_stats` |
 | `DS2API_ACCOUNT_TOKENS_DIR` | 每账号运行时 token 文件目录；用于跨容器重启复用登录 token，不写入 `config.json` | `data/account_tokens` |

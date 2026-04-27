@@ -12,7 +12,7 @@ const MAX_AUTO_FETCH_FAILURES = 3
 
 const DEFAULT_FORM = {
     admin: { jwt_expire_hours: 24 },
-    runtime: { account_max_inflight: 2, account_max_queue: 10, global_max_inflight: 10, token_refresh_interval_hours: 6 },
+    runtime: { account_max_inflight: 2, account_max_queue: 10, global_max_inflight: 10, token_refresh_interval_hours: 6, account_selection_mode: 'token_first' },
     compat: { strip_reference_markers: true },
     responses: { store_ttl_seconds: 900 },
     embeddings: { provider: '' },
@@ -57,6 +57,7 @@ function fromServerForm(data) {
             account_max_queue: Number(data.runtime?.account_max_queue || 10),
             global_max_inflight: Number(data.runtime?.global_max_inflight || 10),
             token_refresh_interval_hours: Number(data.runtime?.token_refresh_interval_hours || 6),
+            account_selection_mode: data.runtime?.account_selection_mode || 'token_first',
         },
         compat: {
             strip_reference_markers: data.compat?.strip_reference_markers ?? true,
@@ -86,6 +87,7 @@ function toServerPayload(form) {
             account_max_queue: Number(form.runtime.account_max_queue),
             global_max_inflight: Number(form.runtime.global_max_inflight),
             token_refresh_interval_hours: Number(form.runtime.token_refresh_interval_hours),
+            account_selection_mode: String(form.runtime.account_selection_mode || 'token_first'),
         },
         compat: {
             strip_reference_markers: Boolean(form.compat?.strip_reference_markers ?? true),

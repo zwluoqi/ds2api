@@ -32,6 +32,7 @@ type ConfigStore interface {
 	RuntimeAccountMaxQueue(defaultSize int) int
 	RuntimeGlobalMaxInflight(defaultSize int) int
 	RuntimeTokenRefreshIntervalHours() int
+	RuntimeAccountSelectionMode() string
 	AutoDeleteMode() string
 	HistorySplitEnabled() bool
 	HistorySplitTriggerAfterTurns() int
@@ -42,7 +43,7 @@ type ConfigStore interface {
 type PoolController interface {
 	Reset()
 	Status() map[string]any
-	ApplyRuntimeLimits(maxInflightPerAccount, maxQueueSize, globalMaxInflight int)
+	ApplyRuntimeLimits(maxInflightPerAccount, maxQueueSize, globalMaxInflight int, selectionMode string)
 }
 
 type OpenAIChatCaller interface {

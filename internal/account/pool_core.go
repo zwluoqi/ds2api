@@ -17,6 +17,7 @@ type Pool struct {
 	recommendedConcurrency int
 	maxQueueSize           int
 	globalMaxInflight      int
+	selectionMode          string
 }
 
 func NewPool(store *config.Store) *Pool {
@@ -34,22 +35,8 @@ func NewPool(store *config.Store) *Pool {
 }
 
 func (p *Pool) Reset() {
-	accounts := p.store.Accounts()
-	sort.SliceStable(accounts, func(i, j int) bool {
-		iHas := accounts[i].Token != ""
-		jHas := accounts[j].Token != ""
-		if iHas == jHas {
-			return i < j
-		}
-		return iHas
-	})
-	ids := make([]string, 0, len(accounts))
-	for _, a := range accounts {
-		id := a.Identifier()
-		if id != "" {
-			ids = append(ids, id)
-		}
-	}
+	selectionMode := p.runtimeSelectionMode()
+	ids := p.accountIDsForSelectionMode(selectionMode)
 	if p.store != nil {
 		p.maxInflightPerAccount = p.store.RuntimeAccountMaxInflight()
 	} else {
@@ -70,9 +57,11 @@ func (p *Pool) Reset() {
 	p.recommendedConcurrency = recommended
 	p.maxQueueSize = queueLimit
 	p.globalMaxInflight = globalLimit
+	p.selectionMode = selectionMode
 	config.Logger.Info(
 		"[init_account_queue] initialized",
 		"total", len(ids),
+		"selection_mode", p.selectionMode,
 		"max_inflight_per_account", p.maxInflightPerAccount,
 		"global_max_inflight", p.globalMaxInflight,
 		"recommended_concurrency", p.recommendedConcurrency,
@@ -129,4 +118,33 @@ func (p *Pool) Status() map[string]any {
 		"waiting":                  len(p.waiters),
 		"max_queue_size":           p.maxQueueSize,
 	}
+}
+
+func (p *Pool) accountIDsForSelectionMode(selectionMode string) []string {
+	accounts := p.store.Accounts()
+	if selectionMode == config.AccountSelectionTokenFirst {
+		sort.SliceStable(accounts, func(i, j int) bool {
+			iHas := accounts[i].Token != ""
+			jHas := accounts[j].Token != ""
+			if iHas == jHas {
+				return i < j
+			}
+			return iHas
+		})
+	}
+	ids := make([]string, 0, len(accounts))
+	for _, a := range accounts {
+		id := a.Identifier()
+		if id != "" {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+func (p *Pool) runtimeSelectionMode() string {
+	if p == nil || p.store == nil {
+		return config.AccountSelectionTokenFirst
+	}
+	return p.store.RuntimeAccountSelectionMode()
 }

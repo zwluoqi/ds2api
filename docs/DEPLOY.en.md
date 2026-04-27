@@ -256,6 +256,7 @@ VERCEL_TEAM_ID=team_xxxxxxxxxxxx   # optional for personal accounts
 | `DS2API_ACCOUNT_MAX_INFLIGHT` | Per-account inflight limit | `2` |
 | `DS2API_ACCOUNT_MAX_QUEUE` | Waiting queue limit | `recommended_concurrency` |
 | `DS2API_GLOBAL_MAX_INFLIGHT` | Global inflight limit | `recommended_concurrency` |
+| `DS2API_ACCOUNT_SELECTION_MODE` | Account selection mode: `token_first` prefers signed-in accounts, `round_robin` strictly rotates in config order | `token_first` |
 | `DS2API_ENV_WRITEBACK` | When `DS2API_CONFIG_JSON` is present, auto-write to `DS2API_CONFIG_PATH` and switch to file-backed mode after success (`1/true/yes/on`) | Disabled |
 | `DS2API_ACCOUNT_STATS_DIR` | Per-account request stats directory | `data/account_stats` |
 | `DS2API_ACCOUNT_TOKENS_DIR` | Per-account runtime token directory; reuses login tokens across container restarts without writing them to `config.json` | `data/account_tokens` |

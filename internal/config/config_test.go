@@ -297,6 +297,20 @@ func TestEnvBackedStoreWritebackFallsBackToPersistedFileOnInvalidEnvJSON(t *test
 	}
 }
 
+func TestLoadStoreWithErrorRejectsInvalidAccountSelectionMode(t *testing.T) {
+	t.Setenv("DS2API_CONFIG_JSON", `{
+		"keys":["k1"],
+		"accounts":[{"email":"u@example.com","password":"p"}],
+		"runtime":{"account_selection_mode":"unknown"}
+	}`)
+
+	if _, err := LoadStoreWithError(); err == nil {
+		t.Fatal("expected LoadStoreWithError to reject invalid account selection mode")
+	} else if !strings.Contains(err.Error(), "runtime.account_selection_mode") {
+		t.Fatalf("expected account selection validation error, got %v", err)
+	}
+}
+
 func TestRuntimeTokenRefreshIntervalHoursDefaultsToSix(t *testing.T) {
 	t.Setenv("DS2API_CONFIG_JSON", `{
 		"keys":["k1"],
@@ -319,6 +333,31 @@ func TestRuntimeTokenRefreshIntervalHoursUsesConfigValue(t *testing.T) {
 	store := LoadStore()
 	if got := store.RuntimeTokenRefreshIntervalHours(); got != 9 {
 		t.Fatalf("expected configured refresh interval 9, got %d", got)
+	}
+}
+
+func TestRuntimeAccountSelectionModeDefaultsToTokenFirst(t *testing.T) {
+	t.Setenv("DS2API_CONFIG_JSON", `{
+		"keys":["k1"],
+		"accounts":[{"email":"u@example.com","password":"p"}]
+	}`)
+
+	store := LoadStore()
+	if got := store.RuntimeAccountSelectionMode(); got != AccountSelectionTokenFirst {
+		t.Fatalf("expected default account selection mode %q, got %q", AccountSelectionTokenFirst, got)
+	}
+}
+
+func TestRuntimeAccountSelectionModeUsesConfigValue(t *testing.T) {
+	t.Setenv("DS2API_CONFIG_JSON", `{
+		"keys":["k1"],
+		"accounts":[{"email":"u@example.com","password":"p"}],
+		"runtime":{"account_selection_mode":"round_robin"}
+	}`)
+
+	store := LoadStore()
+	if got := store.RuntimeAccountSelectionMode(); got != AccountSelectionRoundRobin {
+		t.Fatalf("expected configured account selection mode %q, got %q", AccountSelectionRoundRobin, got)
 	}
 }
 
