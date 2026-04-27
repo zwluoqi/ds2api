@@ -2,49 +2,8 @@ package toolstream
 
 import (
 	"ds2api/internal/toolcall"
-	"regexp"
 	"strings"
 )
-
-// --- XML tool call support for the streaming sieve ---
-
-//nolint:unused // kept as explicit tag inventory for future XML sieve refinements.
-var xmlToolCallClosingTags = []string{"</tool_calls>", "</|dsml|tool_calls>", "</dsml|tool_calls>", "</｜tool_calls>", "</|tool_calls>"}
-var xmlToolCallOpeningTags = []string{
-	"<tool_calls", "<invoke",
-	"<|dsml|tool_calls", "<|dsml|invoke",
-	"<dsml|tool_calls", "<dsml|invoke",
-	"<｜tool_calls", "<｜invoke",
-	"<|tool_calls", "<|invoke",
-}
-
-// xmlToolCallTagPairs maps each opening tag to its expected closing tag.
-// Order matters: longer/wrapper tags must be checked first.
-var xmlToolCallTagPairs = []struct{ open, close string }{
-	{"<|dsml|tool_calls", "</|dsml|tool_calls>"},
-	{"<dsml|tool_calls", "</dsml|tool_calls>"},
-	{"<｜tool_calls", "</｜tool_calls>"},
-	{"<|tool_calls", "</|tool_calls>"},
-	{"<tool_calls", "</tool_calls>"},
-}
-
-// xmlToolCallBlockPattern matches a complete canonical XML tool call block.
-//
-//nolint:unused // reserved for future fast-path XML block detection.
-var xmlToolCallBlockPattern = regexp.MustCompile(`(?is)((?:<tool_calls\b|<\|dsml\|tool_calls\b)[^>]*>\s*(?:.*?)\s*(?:</tool_calls>|</\|dsml\|tool_calls>))`)
-
-// xmlToolTagsToDetect is the set of XML tag prefixes used by findToolSegmentStart.
-var xmlToolTagsToDetect = []string{
-	"<|dsml|tool_calls>", "<|dsml|tool_calls\n", "<|dsml|tool_calls ",
-	"<|dsml|invoke ", "<|dsml|invoke\n", "<|dsml|invoke\t", "<|dsml|invoke\r",
-	"<dsml|tool_calls>", "<dsml|tool_calls\n", "<dsml|tool_calls ",
-	"<dsml|invoke ", "<dsml|invoke\n", "<dsml|invoke\t", "<dsml|invoke\r",
-	"<｜tool_calls>", "<｜tool_calls\n", "<｜tool_calls ",
-	"<｜invoke ", "<｜invoke\n", "<｜invoke\t", "<｜invoke\r",
-	"<|tool_calls>", "<|tool_calls\n", "<|tool_calls ",
-	"<|invoke ", "<|invoke\n", "<|invoke\t", "<|invoke\r",
-	"<tool_calls>", "<tool_calls\n", "<tool_calls ", "<invoke ", "<invoke\n", "<invoke\t", "<invoke\r",
-}
 
 // consumeXMLToolCapture tries to extract complete XML tool call blocks from captured text.
 func consumeXMLToolCapture(captured string, toolNames []string) (prefix string, calls []toolcall.ParsedToolCall, suffix string, ready bool) {
@@ -137,88 +96,6 @@ func consumeXMLToolCapture(captured string, toolNames []string) (prefix string, 
 	return "", nil, "", false
 }
 
-func findMatchingXMLToolWrapperClose(s, openTag, closeTag string, openIdx int) int {
-	if s == "" || openTag == "" || closeTag == "" || openIdx < 0 {
-		return -1
-	}
-	lower := strings.ToLower(s)
-	openTarget := strings.ToLower(openTag)
-	closeTarget := strings.ToLower(closeTag)
-	depth := 1
-	for i := openIdx + len(openTarget); i < len(s); {
-		switch {
-		case strings.HasPrefix(lower[i:], "<![cdata["):
-			end := strings.Index(lower[i+len("<![cdata["):], "]]>")
-			if end < 0 {
-				return -1
-			}
-			i += len("<![cdata[") + end + len("]]>")
-		case strings.HasPrefix(lower[i:], "<!--"):
-			end := strings.Index(lower[i+len("<!--"):], "-->")
-			if end < 0 {
-				return -1
-			}
-			i += len("<!--") + end + len("-->")
-		case strings.HasPrefix(lower[i:], closeTarget):
-			depth--
-			if depth == 0 {
-				return i
-			}
-			i += len(closeTarget)
-		case strings.HasPrefix(lower[i:], openTarget) && hasXMLToolTagBoundary(s, i+len(openTarget)):
-			depth++
-			i += len(openTarget)
-		default:
-			i++
-		}
-	}
-	return -1
-}
-
-func findXMLOpenOutsideCDATA(s, openTag string, start int) int {
-	if s == "" || openTag == "" {
-		return -1
-	}
-	if start < 0 {
-		start = 0
-	}
-	lower := strings.ToLower(s)
-	target := strings.ToLower(openTag)
-	for i := start; i < len(s); {
-		switch {
-		case strings.HasPrefix(lower[i:], "<![cdata["):
-			end := strings.Index(lower[i+len("<![cdata["):], "]]>")
-			if end < 0 {
-				return -1
-			}
-			i += len("<![cdata[") + end + len("]]>")
-		case strings.HasPrefix(lower[i:], "<!--"):
-			end := strings.Index(lower[i+len("<!--"):], "-->")
-			if end < 0 {
-				return -1
-			}
-			i += len("<!--") + end + len("-->")
-		case strings.HasPrefix(lower[i:], target) && hasXMLToolTagBoundary(s, i+len(target)):
-			return i
-		default:
-			i++
-		}
-	}
-	return -1
-}
-
-func hasXMLToolTagBoundary(text string, idx int) bool {
-	if idx >= len(text) {
-		return true
-	}
-	switch text[idx] {
-	case ' ', '\t', '\n', '\r', '>', '/':
-		return true
-	default:
-		return false
-	}
-}
-
 // hasOpenXMLToolTag returns true if captured text contains an XML tool opening tag
 // whose SPECIFIC closing tag has not appeared yet.
 func hasOpenXMLToolTag(captured string) bool {
@@ -305,59 +182,6 @@ func firstInvokeIndex(lower string) (int, bool) {
 	default:
 		return xmlIdx, false
 	}
-}
-
-func findXMLCloseOutsideCDATA(s, closeTag string, start int) int {
-	if s == "" || closeTag == "" {
-		return -1
-	}
-	if start < 0 {
-		start = 0
-	}
-	lower := strings.ToLower(s)
-	target := strings.ToLower(closeTag)
-	for i := start; i < len(s); {
-		switch {
-		case strings.HasPrefix(lower[i:], "<![cdata["):
-			end := strings.Index(lower[i+len("<![cdata["):], "]]>")
-			if end < 0 {
-				return -1
-			}
-			i += len("<![cdata[") + end + len("]]>")
-		case strings.HasPrefix(lower[i:], "<!--"):
-			end := strings.Index(lower[i+len("<!--"):], "-->")
-			if end < 0 {
-				return -1
-			}
-			i += len("<!--") + end + len("-->")
-		case strings.HasPrefix(lower[i:], target):
-			return i
-		default:
-			i++
-		}
-	}
-	return -1
-}
-
-func findXMLTagEnd(s string, start int) int {
-	quote := byte(0)
-	for i := start; i < len(s); i++ {
-		ch := s[i]
-		if quote != 0 {
-			if ch == quote {
-				quote = 0
-			}
-			continue
-		}
-		if ch == '"' || ch == '\'' {
-			quote = ch
-			continue
-		}
-		if ch == '>' {
-			return i
-		}
-	}
-	return -1
 }
 
 // findPartialXMLToolTagStart checks if the string ends with a partial canonical
