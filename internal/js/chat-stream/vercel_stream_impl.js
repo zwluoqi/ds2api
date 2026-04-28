@@ -205,14 +205,14 @@ async function handleVercelStream(req, res, rawBody, payload) {
       if (detected.length > 0 && !toolCallsDoneEmitted) {
         toolCallsEmitted = true;
         toolCallsDoneEmitted = true;
-        sendDeltaFrame({ tool_calls: formatOpenAIStreamToolCalls(detected, streamToolCallIDs) });
+        sendDeltaFrame({ tool_calls: formatOpenAIStreamToolCalls(detected, streamToolCallIDs, payload.tools) });
       } else if (toolSieveEnabled) {
         const tailEvents = flushToolSieve(toolSieveState, toolNames);
         for (const evt of tailEvents) {
           if (evt.type === 'tool_calls' && Array.isArray(evt.calls) && evt.calls.length > 0) {
             toolCallsEmitted = true;
             toolCallsDoneEmitted = true;
-            sendDeltaFrame({ tool_calls: formatOpenAIStreamToolCalls(evt.calls, streamToolCallIDs) });
+            sendDeltaFrame({ tool_calls: formatOpenAIStreamToolCalls(evt.calls, streamToolCallIDs, payload.tools) });
             resetStreamToolCallState(streamToolCallIDs, streamToolNames);
             continue;
           }
@@ -352,14 +352,14 @@ async function handleVercelStream(req, res, rawBody, payload) {
                       const formatted = formatIncrementalToolCallDeltas(filtered, streamToolCallIDs);
                       if (formatted.length > 0) {
                         toolCallsEmitted = true;
-                        sendDeltaFrame({ tool_calls: formatted });
+                      sendDeltaFrame({ tool_calls: formatted });
                       }
                       continue;
                     }
                     if (evt.type === 'tool_calls') {
                       toolCallsEmitted = true;
                       toolCallsDoneEmitted = true;
-                      sendDeltaFrame({ tool_calls: formatOpenAIStreamToolCalls(evt.calls, streamToolCallIDs) });
+                      sendDeltaFrame({ tool_calls: formatOpenAIStreamToolCalls(evt.calls, streamToolCallIDs, payload.tools) });
                       resetStreamToolCallState(streamToolCallIDs, streamToolNames);
                       continue;
                     }
