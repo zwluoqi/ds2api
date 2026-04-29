@@ -7,7 +7,7 @@ import (
 	"ds2api/internal/prompt"
 )
 
-const historySplitInjectedFilename = "IGNORE"
+const CurrentInputContextFilename = "history.txt"
 
 func BuildOpenAIHistoryTranscript(messages []any) string {
 	return buildOpenAIInjectedFileTranscript(messages)
@@ -32,5 +32,5 @@ func buildOpenAIInjectedFileTranscript(messages []any) string {
 	if transcript == "" {
 		return ""
 	}
-	return fmt.Sprintf("[file content end]\n\n%s\n\n[file name]: %s\n[file content begin]\n", transcript, historySplitInjectedFilename)
+	return fmt.Sprintf("[file content end]\n\n%s\n\n[file name]: %s\n[file content begin]\n", transcript, CurrentInputContextFilename)
 }

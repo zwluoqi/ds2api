@@ -158,10 +158,9 @@ flowchart LR
 | expert | `deepseek-v4-pro-search-nothinking` | 永久关闭，不受请求参数影响 | ✅ |
 | vision | `deepseek-v4-vision` | 默认开启，可由请求参数控制 | ❌ |
 | vision | `deepseek-v4-vision-nothinking` | 永久关闭，不受请求参数影响 | ❌ |
-| vision | `deepseek-v4-vision-search` | 默认开启，可由请求参数控制 | ✅ |
-| vision | `deepseek-v4-vision-search-nothinking` | 永久关闭，不受请求参数影响 | ✅ |
 
 除原生模型外，也支持常见 alias 输入（如 `gpt-4.1`、`gpt-5`、`gpt-5-codex`、`o3`、`claude-*`、`gemini-*` 等），但 `/v1/models` 返回的是规范化后的 DeepSeek 原生模型 ID。若 alias 名本身追加 `-nothinking` 后缀，也会映射到对应的强制关思考模型。完整 alias 行为以 [API.md](API.md#模型-alias-解析策略) 和 `config.example.json` 为准。
+当前上游视觉模型只暴露 `vision` 通道，不提供独立的联网搜索视觉变体。
 
 ### Claude 接口（`GET /anthropic/v1/models`）
 
@@ -316,7 +315,7 @@ go run ./cmd/ds2api
 - `runtime`：账号并发、队列与 token 刷新策略，可通过 Admin Settings 热更新。
 - `auto_delete.mode`：请求结束后的远端会话清理策略，支持 `none` / `single` / `all`。
 - `history_split`：旧轮次拆分字段，已废弃并忽略，仅保留兼容旧配置。
-- `current_input_file`：唯一生效的独立拆分策略；默认开启且阈值为 `0`，触发时将完整上下文合并上传为隐藏上下文文件。
+- `current_input_file`：唯一生效的独立拆分策略；默认开启且阈值为 `0`，触发时将完整上下文合并上传为 `history.txt` 上下文文件。
 - 如果关闭 `current_input_file`，请求会直接透传，不上传拆分上下文文件。
 - `thinking_injection`：默认开启；在最新 user 消息末尾追加思考增强提示词，提高高强度推理与工具调用前的思考稳定性；`prompt` 留空时使用内置默认提示词。
 

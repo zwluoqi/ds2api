@@ -310,8 +310,8 @@ func TestChatCompletionsCurrentInputFilePersistsNeutralPrompt(t *testing.T) {
 	if len(ds.uploadCalls) != 1 {
 		t.Fatalf("expected current input upload to happen, got %d", len(ds.uploadCalls))
 	}
-	if ds.uploadCalls[0].Filename != "IGNORE.txt" {
-		t.Fatalf("expected IGNORE.txt upload, got %q", ds.uploadCalls[0].Filename)
+	if ds.uploadCalls[0].Filename != "history.txt" {
+		t.Fatalf("expected history.txt upload, got %q", ds.uploadCalls[0].Filename)
 	}
 	if full.HistoryText != string(ds.uploadCalls[0].Data) {
 		t.Fatalf("expected uploaded current input file to be persisted in history text")

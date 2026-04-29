@@ -199,8 +199,7 @@ No auth required. Returns the currently supported DeepSeek native model list.
     {"id": "deepseek-v4-pro", "object": "model", "created": 1677610602, "owned_by": "deepseek", "permission": []},
     {"id": "deepseek-v4-flash-search", "object": "model", "created": 1677610602, "owned_by": "deepseek", "permission": []},
     {"id": "deepseek-v4-pro-search", "object": "model", "created": 1677610602, "owned_by": "deepseek", "permission": []},
-    {"id": "deepseek-v4-vision", "object": "model", "created": 1677610602, "owned_by": "deepseek", "permission": []},
-    {"id": "deepseek-v4-vision-search", "object": "model", "created": 1677610602, "owned_by": "deepseek", "permission": []}
+    {"id": "deepseek-v4-vision", "object": "model", "created": 1677610602, "owned_by": "deepseek", "permission": []}
   ]
 }
 ```
@@ -223,6 +222,8 @@ Built-in aliases come from `internal/config/models.go`; `config.model_aliases` c
 - Claude: `claude-opus-4-6`, `claude-sonnet-4-6`, `claude-haiku-4-5`, `claude-3-5-sonnet-latest`
 - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-pro-vision`
 - Other compatibility families: `llama-*`, `qwen-*`, `mistral-*`, and `command-*` fall back through family heuristics
+
+Current vision support resolves only to `deepseek-v4-vision` and does not expose a separate `vision-search` variant.
 
 Retired historical families such as `claude-1.*`, `claude-2.*`, `claude-instant-*`, and `gpt-3.5*` are explicitly rejected.
 

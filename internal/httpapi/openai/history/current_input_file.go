@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	currentInputFilename    = "IGNORE.txt"
+	currentInputFilename    = promptcompat.CurrentInputContextFilename
 	currentInputContentType = "text/plain; charset=utf-8"
 	currentInputPurpose     = "assistants"
 )
