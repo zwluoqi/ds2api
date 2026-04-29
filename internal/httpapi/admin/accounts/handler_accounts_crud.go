@@ -66,18 +66,20 @@ func (h *Handler) listAccounts(w http.ResponseWriter, r *http.Request) {
 		testStatus, _ := h.Store.AccountTestStatus(acc.Identifier())
 		token := strings.TrimSpace(acc.Token)
 		items = append(items, map[string]any{
-			"identifier":    acc.Identifier(),
-			"name":          acc.Name,
-			"remark":        acc.Remark,
-			"email":         acc.Email,
-			"mobile":        acc.Mobile,
-			"device_id":     acc.DeviceID,
-			"proxy_id":      acc.ProxyID,
-			"has_password":  acc.Password != "",
-			"has_token":     token != "",
-			"token_preview": maskSecretPreview(token),
-			"test_status":   testStatus,
-			"stats":         h.accountStatsSummary(acc.Identifier()),
+			"identifier":        acc.Identifier(),
+			"name":              acc.Name,
+			"remark":            acc.Remark,
+			"email":             acc.Email,
+			"mobile":            acc.Mobile,
+			"device_id":         acc.DeviceID,
+			"proxy_id":          acc.ProxyID,
+			"total_flash_limit": acc.TotalFlashLimit,
+			"total_pro_limit":   acc.TotalProLimit,
+			"has_password":      acc.Password != "",
+			"has_token":         token != "",
+			"token_preview":     maskSecretPreview(token),
+			"test_status":       testStatus,
+			"stats":             h.accountStatsSummary(acc.Identifier()),
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -152,6 +154,8 @@ func (h *Handler) updateAccount(w http.ResponseWriter, r *http.Request) {
 	name, nameOK := fieldStringOptional(req, "name")
 	remark, remarkOK := fieldStringOptional(req, "remark")
 	deviceID, deviceIDOK := fieldStringOptional(req, "device_id")
+	totalFlashLimit, totalFlashLimitOK := int64Optional(req, "total_flash_limit")
+	totalProLimit, totalProLimitOK := int64Optional(req, "total_pro_limit")
 
 	err := h.Store.Update(func(c *config.Config) error {
 		for i, acc := range c.Accounts {
@@ -170,6 +174,12 @@ func (h *Handler) updateAccount(w http.ResponseWriter, r *http.Request) {
 					c.Accounts[i].Token = ""
 				}
 				c.Accounts[i].DeviceID = deviceID
+			}
+			if totalFlashLimitOK {
+				c.Accounts[i].TotalFlashLimit = totalFlashLimit
+			}
+			if totalProLimitOK {
+				c.Accounts[i].TotalProLimit = totalProLimit
 			}
 			return nil
 		}

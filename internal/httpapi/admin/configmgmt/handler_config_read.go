@@ -24,16 +24,18 @@ func (h *Handler) getConfig(w http.ResponseWriter, _ *http.Request) {
 	for _, acc := range snap.Accounts {
 		token := strings.TrimSpace(acc.Token)
 		accounts = append(accounts, map[string]any{
-			"identifier":    acc.Identifier(),
-			"name":          acc.Name,
-			"remark":        acc.Remark,
-			"email":         acc.Email,
-			"mobile":        acc.Mobile,
-			"device_id":     acc.DeviceID,
-			"proxy_id":      acc.ProxyID,
-			"has_password":  strings.TrimSpace(acc.Password) != "",
-			"has_token":     token != "",
-			"token_preview": maskSecretPreview(token),
+			"identifier":        acc.Identifier(),
+			"name":              acc.Name,
+			"remark":            acc.Remark,
+			"email":             acc.Email,
+			"mobile":            acc.Mobile,
+			"device_id":         acc.DeviceID,
+			"proxy_id":          acc.ProxyID,
+			"total_flash_limit": acc.TotalFlashLimit,
+			"total_pro_limit":   acc.TotalProLimit,
+			"has_password":      strings.TrimSpace(acc.Password) != "",
+			"has_token":         token != "",
+			"token_preview":     maskSecretPreview(token),
 		})
 	}
 	safe["accounts"] = accounts

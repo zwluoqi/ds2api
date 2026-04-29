@@ -1,12 +1,15 @@
 package accounts
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 
 	"ds2api/internal/accountstats"
 	"ds2api/internal/chathistory"
 	"ds2api/internal/config"
 	adminshared "ds2api/internal/httpapi/admin/shared"
+	"ds2api/internal/util"
 )
 
 type Handler struct {
@@ -32,6 +35,20 @@ func toAccount(m map[string]any) config.Account {
 }
 func fieldStringOptional(m map[string]any, key string) (string, bool) {
 	return adminshared.FieldStringOptional(m, key)
+}
+func int64Optional(m map[string]any, key string) (int64, bool) {
+	v, ok := m[key]
+	if !ok || v == nil {
+		return 0, false
+	}
+	if s := strings.TrimSpace(fmt.Sprintf("%v", v)); s == "" {
+		return 0, true
+	}
+	n := int64(util.IntFrom(v))
+	if n < 0 {
+		n = 0
+	}
+	return n, true
 }
 func accountMatchesIdentifier(acc config.Account, identifier string) bool {
 	return adminshared.AccountMatchesIdentifier(acc, identifier)

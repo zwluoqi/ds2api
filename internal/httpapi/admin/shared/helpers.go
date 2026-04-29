@@ -160,13 +160,15 @@ func toAccount(m map[string]any) config.Account {
 	email := fieldString(m, "email")
 	mobile := config.NormalizeMobileForStorage(fieldString(m, "mobile"))
 	return config.Account{
-		Name:     fieldString(m, "name"),
-		Remark:   fieldString(m, "remark"),
-		Email:    email,
-		Mobile:   mobile,
-		Password: fieldString(m, "password"),
-		DeviceID: fieldString(m, "device_id"),
-		ProxyID:  fieldString(m, "proxy_id"),
+		Name:            fieldString(m, "name"),
+		Remark:          fieldString(m, "remark"),
+		Email:           email,
+		Mobile:          mobile,
+		Password:        fieldString(m, "password"),
+		DeviceID:        fieldString(m, "device_id"),
+		ProxyID:         fieldString(m, "proxy_id"),
+		TotalFlashLimit: int64From(m["total_flash_limit"]),
+		TotalProLimit:   int64From(m["total_pro_limit"]),
 	}
 }
 
@@ -296,6 +298,14 @@ func fieldStringOptional(m map[string]any, key string) (string, bool) {
 	return strings.TrimSpace(fmt.Sprintf("%v", v)), true
 }
 
+func int64From(v any) int64 {
+	n := int64(intFrom(v))
+	if n < 0 {
+		return 0
+	}
+	return n
+}
+
 func statusOr(v int, d int) int {
 	if v == 0 {
 		return d
@@ -324,6 +334,12 @@ func normalizeAccountForStorage(acc config.Account) config.Account {
 	acc.Mobile = config.NormalizeMobileForStorage(acc.Mobile)
 	acc.DeviceID = strings.TrimSpace(acc.DeviceID)
 	acc.ProxyID = strings.TrimSpace(acc.ProxyID)
+	if acc.TotalFlashLimit < 0 {
+		acc.TotalFlashLimit = 0
+	}
+	if acc.TotalProLimit < 0 {
+		acc.TotalProLimit = 0
+	}
 	return acc
 }
 

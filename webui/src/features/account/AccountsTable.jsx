@@ -1,8 +1,18 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, Check, Copy, Pencil, Play, Plus, Trash2, FolderX } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check, Copy, Pencil, Play, Plus, Trash2, FolderX, Upload } from 'lucide-react'
 import clsx from 'clsx'
 
 const statValue = (value) => Number(value || 0)
+const limitValue = (value) => Number(value || 0)
+const statDisplay = (value, limit) => {
+    const used = statValue(value)
+    const max = limitValue(limit)
+    return max > 0 ? `${used} / ${max}` : String(used)
+}
+const limitReached = (value, limit) => {
+    const max = limitValue(limit)
+    return max > 0 && statValue(value) >= max
+}
 
 export default function AccountsTable({
     t,
@@ -22,6 +32,7 @@ export default function AccountsTable({
     proxies,
     onTestAll,
     onShowAddAccount,
+    onShowBatchImport,
     onEditAccount,
     onTestAccount,
     onDeleteAccount,
@@ -64,6 +75,13 @@ export default function AccountsTable({
                     >
                         {testingAll ? <span className="animate-spin mr-2">⟳</span> : <Play className="w-3 h-3 mr-2" />}
                         {t('accountManager.testAll')}
+                    </button>
+                    <button
+                        onClick={onShowBatchImport}
+                        className="flex items-center gap-2 px-3 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors text-xs font-medium border border-border"
+                    >
+                        <Upload className="w-3.5 h-3.5" />
+                        {t('accountManager.batchImport')}
                     </button>
                     <button
                         onClick={onShowAddAccount}
@@ -115,8 +133,8 @@ export default function AccountsTable({
                         const statItems = [
                             { label: t('accountManager.statsDailyFlash'), value: stats.daily_flash_requests },
                             { label: t('accountManager.statsDailyPro'), value: stats.daily_pro_requests },
-                            { label: t('accountManager.statsTotalFlash'), value: stats.total_flash_requests },
-                            { label: t('accountManager.statsTotalPro'), value: stats.total_pro_requests },
+                            { label: t('accountManager.statsTotalFlash'), value: stats.total_flash_requests, limit: acc.total_flash_limit },
+                            { label: t('accountManager.statsTotalPro'), value: stats.total_pro_requests, limit: acc.total_pro_limit },
                         ]
                         return (
                             <div key={i} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-muted/50 transition-colors">
@@ -176,9 +194,19 @@ export default function AccountsTable({
                                         </div>
                                         <div className="mt-2 grid grid-cols-2 lg:grid-cols-4 gap-1.5 max-w-2xl">
                                             {statItems.map(item => (
-                                                <div key={item.label} className="rounded-md border border-border/70 bg-background/70 px-2 py-1.5 min-w-0">
+                                                <div key={item.label} className={clsx(
+                                                    "rounded-md border px-2 py-1.5 min-w-0",
+                                                    limitReached(item.value, item.limit)
+                                                        ? "border-red-500/30 bg-red-500/10"
+                                                        : "border-border/70 bg-background/70"
+                                                )}>
                                                     <div className="text-[10px] leading-none text-muted-foreground truncate">{item.label}</div>
-                                                    <div className="mt-1 text-sm leading-none font-semibold tabular-nums text-foreground">{statValue(item.value)}</div>
+                                                    <div className={clsx(
+                                                        "mt-1 text-sm leading-none font-semibold tabular-nums",
+                                                        limitReached(item.value, item.limit) ? "text-red-500" : "text-foreground"
+                                                    )}>
+                                                        {statDisplay(item.value, item.limit)}
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>

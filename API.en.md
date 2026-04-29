@@ -667,6 +667,8 @@ Returns sanitized config, including both `keys` and `api_keys`.
       "email": "user@example.com",
       "mobile": "",
       "device_id": "optional-device-id",
+      "total_flash_limit": 1000,
+      "total_pro_limit": 200,
       "has_password": true,
       "has_token": true,
       "token_preview": "abcde..."
@@ -845,22 +847,22 @@ Tests proxy connectivity: provide `proxy_id` to test a saved proxy; omit it to r
 }
 ```
 
-Returned items also include `test_status`, usually `ok` or `failed`. `stats` is stored independently per account under `data/account_stats/` by default, which maps to `/app/data/account_stats/` in Docker. Override it with `DS2API_ACCOUNT_STATS_DIR` when needed. Account login tokens are not written to `config.json`; they are stored independently under `data/account_tokens/` (Docker default: `/app/data/account_tokens/`) and can be overridden with `DS2API_ACCOUNT_TOKENS_DIR`.
+Returned items also include `test_status`, usually `ok` or `failed`. `stats` is stored independently per account under `data/account_stats/` by default, which maps to `/app/data/account_stats/` in Docker. Override it with `DS2API_ACCOUNT_STATS_DIR` when needed. `total_flash_limit` / `total_pro_limit` are per-account total request limits; `0` or omitted means unlimited, and the managed account pool skips accounts that have reached the relevant model-family limit. Account login tokens are not written to `config.json`; they are stored independently under `data/account_tokens/` (Docker default: `/app/data/account_tokens/`) and can be overridden with `DS2API_ACCOUNT_TOKENS_DIR`.
 
 ### `POST /admin/accounts`
 
 ```json
-{"email": "user@example.com", "password": "pwd", "device_id": "optional-device-id"}
+{"email": "user@example.com", "password": "pwd", "device_id": "optional-device-id", "total_flash_limit": 1000, "total_pro_limit": 200}
 ```
 
 **Response**: `{"success": true, "total_accounts": 6}`
 
 ### `PUT /admin/accounts/{identifier}`
 
-Updates the `name` / `remark` / `device_id` of the specified account. The path `identifier` can be email or mobile and cannot be changed. Changing `device_id` clears the account runtime token so the next use logs in with the new device ID.
+Updates the `name` / `remark` / `device_id` / `total_flash_limit` / `total_pro_limit` of the specified account. The path `identifier` can be email or mobile and cannot be changed. Changing `device_id` clears the account runtime token so the next use logs in with the new device ID.
 
 ```json
-{"name": "Primary account", "remark": "Shared with the team", "device_id": "optional-device-id"}
+{"name": "Primary account", "remark": "Shared with the team", "device_id": "optional-device-id", "total_flash_limit": 1000, "total_pro_limit": 200}
 ```
 
 **Response**: `{"success": true, "total_accounts": 6}`

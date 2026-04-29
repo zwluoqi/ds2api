@@ -3,12 +3,14 @@ package chat
 import (
 	"context"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"ds2api/internal/accountstats"
 	"ds2api/internal/auth"
 	"ds2api/internal/chathistory"
+	"ds2api/internal/config"
 	"ds2api/internal/httpapi/openai/files"
 	"ds2api/internal/httpapi/openai/history"
 	"ds2api/internal/httpapi/openai/shared"
@@ -62,6 +64,32 @@ func (h *Handler) preprocessInlineFileInputs(ctx context.Context, a *auth.Reques
 		return nil
 	}
 	return (&files.Handler{Store: h.Store, Auth: h.Auth, DS: h.DS, ChatHistory: h.ChatHistory}).PreprocessInlineFileInputs(ctx, a, req)
+}
+
+type accountFilteringAuthResolver interface {
+	DetermineWithAccountFilter(req *http.Request, accept func(config.Account) bool) (*auth.RequestAuth, error)
+}
+
+func (h *Handler) determineAuthForModel(r *http.Request, model string) (*auth.RequestAuth, error) {
+	if h == nil || h.Auth == nil {
+		return nil, auth.ErrUnauthorized
+	}
+	resolver, ok := h.Auth.(accountFilteringAuthResolver)
+	if !ok {
+		return h.Auth.Determine(r)
+	}
+	return resolver.DetermineWithAccountFilter(r, func(acc config.Account) bool {
+		return shared.AccountWithinTotalLimits(h.Stats, acc, model)
+	})
+}
+
+func resolveRequestModelForLimits(store shared.ConfigReader, req map[string]any) (string, bool) {
+	model, _ := req["model"].(string)
+	model = strings.TrimSpace(model)
+	if model == "" {
+		return "", true
+	}
+	return config.ResolveModel(store, model)
 }
 
 func (h *Handler) toolcallFeatureMatchEnabled() bool {

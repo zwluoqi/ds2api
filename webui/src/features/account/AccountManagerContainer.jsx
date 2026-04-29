@@ -6,6 +6,7 @@ import ApiKeysPanel from './ApiKeysPanel'
 import AccountsTable from './AccountsTable'
 import AddKeyModal from './AddKeyModal'
 import AddAccountModal from './AddAccountModal'
+import BatchAccountImportModal from './BatchAccountImportModal'
 import EditAccountModal from './EditAccountModal'
 
 export default function AccountManagerContainer({ config, onRefresh, onMessage, authFetch }) {
@@ -39,6 +40,9 @@ export default function AccountManagerContainer({ config, onRefresh, onMessage, 
         showAddAccount,
         openAddAccount,
         closeAddAccount,
+        showBatchImport,
+        openBatchImport,
+        closeBatchImport,
         showEditAccount,
         editingAccount,
         editAccount,
@@ -51,6 +55,8 @@ export default function AccountManagerContainer({ config, onRefresh, onMessage, 
         setCopiedKey,
         newAccount,
         setNewAccount,
+        batchImportText,
+        setBatchImportText,
         loading,
         testing,
         testingAll,
@@ -61,6 +67,7 @@ export default function AccountManagerContainer({ config, onRefresh, onMessage, 
         addKey,
         deleteKey,
         addAccount,
+        batchImportAccounts,
         updateAccount,
         deleteAccount,
         testAccount,
@@ -132,6 +139,7 @@ export default function AccountManagerContainer({ config, onRefresh, onMessage, 
                 proxies={config?.proxies || []}
                 onTestAll={testAllAccounts}
                 onShowAddAccount={openAddAccount}
+                onShowBatchImport={openBatchImport}
                 onEditAccount={openEditAccount}
                 onTestAccount={testAccount}
                 onDeleteAccount={deleteAccount}
@@ -164,6 +172,16 @@ export default function AccountManagerContainer({ config, onRefresh, onMessage, 
                 loading={loading}
                 onClose={closeAddAccount}
                 onAdd={addAccount}
+            />
+
+            <BatchAccountImportModal
+                show={showBatchImport}
+                t={t}
+                value={batchImportText}
+                setValue={setBatchImportText}
+                loading={loading || testingAll}
+                onClose={closeBatchImport}
+                onSubmit={batchImportAccounts}
             />
 
             <EditAccountModal

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useBatchAccountImport } from './useBatchAccountImport'
 
 export function useAccountActions({ apiFetch, t, onMessage, onRefresh, config, fetchAccounts, resolveAccountIdentifier }) {
     const [showAddKey, setShowAddKey] = useState(false)
@@ -8,9 +9,9 @@ export function useAccountActions({ apiFetch, t, onMessage, onRefresh, config, f
     const [editingAccount, setEditingAccount] = useState(null)
     const [newKey, setNewKey] = useState({ key: '', name: '', remark: '' })
     const [copiedKey, setCopiedKey] = useState(null)
-    const emptyNewAccount = { name: '', remark: '', email: '', mobile: '', password: '', device_id: '' }
+    const emptyNewAccount = { name: '', remark: '', email: '', mobile: '', password: '', device_id: '', total_flash_limit: '', total_pro_limit: '' }
     const [newAccount, setNewAccount] = useState(emptyNewAccount)
-    const [editAccount, setEditAccount] = useState({ name: '', remark: '', device_id: '' })
+    const [editAccount, setEditAccount] = useState({ name: '', remark: '', device_id: '', total_flash_limit: '', total_pro_limit: '' })
     const [loading, setLoading] = useState(false)
     const [testing, setTesting] = useState({})
     const [testingAll, setTestingAll] = useState(false)
@@ -18,6 +19,31 @@ export function useAccountActions({ apiFetch, t, onMessage, onRefresh, config, f
     const [sessionCounts, setSessionCounts] = useState({})
     const [deletingSessions, setDeletingSessions] = useState({})
     const [updatingProxy, setUpdatingProxy] = useState({})
+
+    const {
+        showBatchImport,
+        openBatchImport,
+        closeBatchImport,
+        batchImportText,
+        setBatchImportText,
+        batchImportAccounts,
+    } = useBatchAccountImport({
+        apiFetch,
+        t,
+        onMessage,
+        onRefresh,
+        fetchAccounts,
+        loading,
+        testingAll,
+        setLoading,
+        setTestingAll,
+        setBatchProgress,
+        setSessionCounts,
+        onOpen: () => {
+            setShowAddAccount(false)
+            setShowEditAccount(false)
+        },
+    })
 
     const openAddKey = () => {
         setEditingKey(null)
@@ -45,7 +71,7 @@ export function useAccountActions({ apiFetch, t, onMessage, onRefresh, config, f
     const openAddAccount = () => {
         setShowEditAccount(false)
         setEditingAccount(null)
-        setEditAccount({ name: '', remark: '', device_id: '' })
+        setEditAccount({ name: '', remark: '', device_id: '', total_flash_limit: '', total_pro_limit: '' })
         setNewAccount(emptyNewAccount)
         setShowAddAccount(true)
     }
@@ -69,6 +95,8 @@ export function useAccountActions({ apiFetch, t, onMessage, onRefresh, config, f
             name: account?.name || '',
             remark: account?.remark || '',
             device_id: account?.device_id || '',
+            total_flash_limit: account?.total_flash_limit || '',
+            total_pro_limit: account?.total_pro_limit || '',
         })
         setShowEditAccount(true)
     }
@@ -76,7 +104,7 @@ export function useAccountActions({ apiFetch, t, onMessage, onRefresh, config, f
     const closeEditAccount = () => {
         setShowEditAccount(false)
         setEditingAccount(null)
-        setEditAccount({ name: '', remark: '', device_id: '' })
+        setEditAccount({ name: '', remark: '', device_id: '', total_flash_limit: '', total_pro_limit: '' })
     }
 
     const addKey = async () => {
@@ -356,6 +384,9 @@ export function useAccountActions({ apiFetch, t, onMessage, onRefresh, config, f
         showAddAccount,
         openAddAccount,
         closeAddAccount,
+        showBatchImport,
+        openBatchImport,
+        closeBatchImport,
         showEditAccount,
         editingAccount,
         editAccount,
@@ -368,6 +399,8 @@ export function useAccountActions({ apiFetch, t, onMessage, onRefresh, config, f
         setCopiedKey,
         newAccount,
         setNewAccount,
+        batchImportText,
+        setBatchImportText,
         loading,
         testing,
         testingAll,
@@ -378,6 +411,7 @@ export function useAccountActions({ apiFetch, t, onMessage, onRefresh, config, f
         addKey,
         deleteKey,
         addAccount,
+        batchImportAccounts,
         updateAccount,
         deleteAccount,
         testAccount,

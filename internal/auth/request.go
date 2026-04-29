@@ -54,6 +54,14 @@ func NewResolver(store *config.Store, pool *account.Pool, login LoginFunc) *Reso
 }
 
 func (r *Resolver) Determine(req *http.Request) (*RequestAuth, error) {
+	return r.determine(req, nil)
+}
+
+func (r *Resolver) DetermineWithAccountFilter(req *http.Request, accept func(config.Account) bool) (*RequestAuth, error) {
+	return r.determine(req, accept)
+}
+
+func (r *Resolver) determine(req *http.Request, accept func(config.Account) bool) (*RequestAuth, error) {
 	callerKey := extractCallerToken(req)
 	if callerKey == "" {
 		return nil, ErrUnauthorized
@@ -70,14 +78,14 @@ func (r *Resolver) Determine(req *http.Request) (*RequestAuth, error) {
 		}, nil
 	}
 	target := strings.TrimSpace(req.Header.Get("X-Ds2-Target-Account"))
-	a, err := r.acquireManagedRequestAuth(ctx, callerID, target)
+	a, err := r.acquireManagedRequestAuth(ctx, callerID, target, accept)
 	if err != nil {
 		return nil, err
 	}
 	return a, nil
 }
 
-func (r *Resolver) acquireManagedRequestAuth(ctx context.Context, callerID, target string) (*RequestAuth, error) {
+func (r *Resolver) acquireManagedRequestAuth(ctx context.Context, callerID, target string, accept func(config.Account) bool) (*RequestAuth, error) {
 	tried := map[string]bool{}
 	var lastEnsureErr error
 	for {
@@ -93,6 +101,14 @@ func (r *Resolver) acquireManagedRequestAuth(ctx context.Context, callerID, targ
 				return nil, lastEnsureErr
 			}
 			return nil, ErrNoAccount
+		}
+		if accept != nil && !accept(acc) {
+			tried[acc.Identifier()] = true
+			r.Pool.Release(acc.Identifier())
+			if target != "" {
+				return nil, ErrNoAccount
+			}
+			continue
 		}
 
 		a := &RequestAuth{

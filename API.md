@@ -681,6 +681,8 @@ data: {"type":"message_stop"}
       "email": "user@example.com",
       "mobile": "",
       "device_id": "optional-device-id",
+      "total_flash_limit": 1000,
+      "total_pro_limit": 200,
       "has_password": true,
       "has_token": true,
       "token_preview": "abcde..."
@@ -864,22 +866,22 @@ data: {"type":"message_stop"}
 }
 ```
 
-`stats` 为每账号独立统计数据，默认持久化到 `data/account_stats/`，Docker 默认对应容器内 `/app/data/account_stats/`。可通过 `DS2API_ACCOUNT_STATS_DIR` 覆盖目录。账号登录 token 不写入 `config.json`，会按账号独立持久化到 `data/account_tokens/`（Docker 默认 `/app/data/account_tokens/`），可通过 `DS2API_ACCOUNT_TOKENS_DIR` 覆盖。
+`stats` 为每账号独立统计数据，默认持久化到 `data/account_stats/`，Docker 默认对应容器内 `/app/data/account_stats/`。可通过 `DS2API_ACCOUNT_STATS_DIR` 覆盖目录。`total_flash_limit` / `total_pro_limit` 为账号总请求限额，`0` 或省略表示不限；托管账号池会在选择账号时跳过对应模型族已达总限额的账号。账号登录 token 不写入 `config.json`，会按账号独立持久化到 `data/account_tokens/`（Docker 默认 `/app/data/account_tokens/`），可通过 `DS2API_ACCOUNT_TOKENS_DIR` 覆盖。
 
 ### `POST /admin/accounts`
 
 ```json
-{"email": "user@example.com", "password": "pwd", "device_id": "optional-device-id"}
+{"email": "user@example.com", "password": "pwd", "device_id": "optional-device-id", "total_flash_limit": 1000, "total_pro_limit": 200}
 ```
 
 **响应**：`{"success": true, "total_accounts": 6}`
 
 ### `PUT /admin/accounts/{identifier}`
 
-更新指定账号的 `name` / `remark` / `device_id`。路径参数中的 `identifier` 可以是 email 或 mobile，且不可修改。修改 `device_id` 会清空该账号运行时 token，下次使用时按新的设备 ID 重新登录。
+更新指定账号的 `name` / `remark` / `device_id` / `total_flash_limit` / `total_pro_limit`。路径参数中的 `identifier` 可以是 email 或 mobile，且不可修改。修改 `device_id` 会清空该账号运行时 token，下次使用时按新的设备 ID 重新登录。
 
 ```json
-{"name": "主账号", "remark": "团队共享", "device_id": "optional-device-id"}
+{"name": "主账号", "remark": "团队共享", "device_id": "optional-device-id", "total_flash_limit": 1000, "total_pro_limit": 200}
 ```
 
 **响应**：`{"success": true, "total_accounts": 6}`

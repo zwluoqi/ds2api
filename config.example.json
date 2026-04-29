@@ -24,7 +24,9 @@
       "remark": "优先用于生产流量",
       "email": "example1@example.com",
       "password": "your-password-1",
-      "device_id": "optional-stable-device-id-1"
+      "device_id": "optional-stable-device-id-1",
+      "total_flash_limit": 0,
+      "total_pro_limit": 0
     },
     {
       "_comment": "邮箱登录方式 - 账号2",

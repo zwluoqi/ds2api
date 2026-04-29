@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -47,7 +48,23 @@ func (h *Handler) GetResponseByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Responses(w http.ResponseWriter, r *http.Request) {
-	a, err := h.Auth.Determine(r)
+	r.Body = http.MaxBytesReader(w, r.Body, openAIGeneralMaxSize)
+	var req map[string]any
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "too large") {
+			writeOpenAIError(w, http.StatusRequestEntityTooLarge, "request body too large")
+			return
+		}
+		writeOpenAIError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	resolvedModel, ok := resolveRequestModelForLimits(h.Store, req)
+	if !ok {
+		model, _ := req["model"].(string)
+		writeOpenAIError(w, http.StatusBadRequest, "model "+strconv.Quote(model)+" is not available")
+		return
+	}
+	a, err := h.determineAuthForModel(r, resolvedModel)
 	if err != nil {
 		status := http.StatusUnauthorized
 		detail := err.Error()
@@ -65,16 +82,6 @@ func (h *Handler) Responses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, openAIGeneralMaxSize)
-	var req map[string]any
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		if strings.Contains(strings.ToLower(err.Error()), "too large") {
-			writeOpenAIError(w, http.StatusRequestEntityTooLarge, "request body too large")
-			return
-		}
-		writeOpenAIError(w, http.StatusBadRequest, "invalid json")
-		return
-	}
 	if err := h.preprocessInlineFileInputs(r.Context(), a, req); err != nil {
 		writeOpenAIInlineFileError(w, err)
 		return

@@ -62,6 +62,30 @@ export default function EditAccountModal({
                             onChange={e => setEditAccount({ ...editAccount, device_id: e.target.value })}
                         />
                     </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-sm font-medium mb-1.5">{t('accountManager.totalFlashLimitOptional')}</label>
+                            <input
+                                type="number"
+                                min="0"
+                                className="input-field"
+                                placeholder={t('accountManager.unlimitedPlaceholder')}
+                                value={editAccount.total_flash_limit}
+                                onChange={e => setEditAccount({ ...editAccount, total_flash_limit: e.target.value })}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-1.5">{t('accountManager.totalProLimitOptional')}</label>
+                            <input
+                                type="number"
+                                min="0"
+                                className="input-field"
+                                placeholder={t('accountManager.unlimitedPlaceholder')}
+                                value={editAccount.total_pro_limit}
+                                onChange={e => setEditAccount({ ...editAccount, total_pro_limit: e.target.value })}
+                            />
+                        </div>
+                    </div>
                     <div className="flex justify-end gap-2 pt-2">
                         <button onClick={onClose} className="px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors text-sm font-medium">{t('actions.cancel')}</button>
                         <button onClick={onSave} disabled={loading} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium disabled:opacity-50">

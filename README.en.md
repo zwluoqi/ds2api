@@ -274,7 +274,7 @@ The server actually binds to `0.0.0.0:5001`, so devices on the same LAN can usua
 Common fields:
 
 - `keys` / `api_keys`: client API keys; `api_keys` adds `name` and `remark` metadata while `keys` remains compatible.
-- `accounts`: managed DeepSeek accounts, supporting `email` or `mobile` login plus proxy/name/remark metadata and an optional `device_id`.
+- `accounts`: managed DeepSeek accounts, supporting `email` or `mobile` login plus proxy/name/remark metadata, an optional `device_id`, and per-account `total_flash_limit` / `total_pro_limit` request limits.
 - `model_aliases`: one shared alias map for OpenAI / Claude / Gemini model names.
 - `runtime`: account concurrency, queueing, and token refresh behavior, hot-reloadable via Admin Settings.
 - `auto_delete.mode`: remote session cleanup after each request, supporting `none` / `single` / `all`.

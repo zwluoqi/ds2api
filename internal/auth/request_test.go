@@ -69,6 +69,34 @@ func TestDetermineWithXAPIKeyManagedKeyAcquiresAccount(t *testing.T) {
 	}
 }
 
+func TestDetermineWithAccountFilterSkipsRejectedAccounts(t *testing.T) {
+	t.Setenv("DS2API_CONFIG_JSON", `{
+		"keys":["managed-key"],
+		"accounts":[
+			{"email":"limited@example.com","password":"pwd","token":"limited-token"},
+			{"email":"open@example.com","password":"pwd","token":"open-token"}
+		]
+	}`)
+	store := config.LoadStore()
+	pool := account.NewPool(store)
+	r := NewResolver(store, pool, func(_ context.Context, acc config.Account) (string, error) {
+		return acc.Token, nil
+	})
+	req, _ := http.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+	req.Header.Set("Authorization", "Bearer managed-key")
+
+	a, err := r.DetermineWithAccountFilter(req, func(acc config.Account) bool {
+		return acc.Email != "limited@example.com"
+	})
+	if err != nil {
+		t.Fatalf("determine failed: %v", err)
+	}
+	defer r.Release(a)
+	if a.AccountID != "open@example.com" {
+		t.Fatalf("expected filtered resolver to skip limited account, got %q", a.AccountID)
+	}
+}
+
 func TestDetermineCallerWithManagedKeySkipsAccountAcquire(t *testing.T) {
 	r := newTestResolver(t)
 	req, _ := http.NewRequest(http.MethodGet, "/v1/responses/resp_1", nil)
