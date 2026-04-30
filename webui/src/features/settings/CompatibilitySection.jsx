@@ -29,6 +29,24 @@ export default function CompatibilitySection({ t, form, setForm }) {
                     />
                 </button>
             </div>
+            <label className="text-sm space-y-2 block">
+                <span className="text-muted-foreground">{t('settings.emptyOutputRetryMaxAttempts')}</span>
+                <input
+                    type="number"
+                    min={0}
+                    max={5}
+                    value={form.compat?.empty_output_retry_max_attempts ?? 0}
+                    onChange={(e) => setForm((prev) => ({
+                        ...prev,
+                        compat: {
+                            ...prev.compat,
+                            empty_output_retry_max_attempts: Math.max(0, Number(e.target.value || 0)),
+                        },
+                    }))}
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2"
+                />
+                <span className="text-xs text-muted-foreground block">{t('settings.emptyOutputRetryMaxAttemptsHelp')}</span>
+            </label>
         </div>
     )
 }

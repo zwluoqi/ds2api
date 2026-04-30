@@ -436,6 +436,8 @@
         "compatibilityTitle": "兼容性设置",
         "compatibilityDesc": "用于控制输出格式兼容性，避免把模型原始流里的标记直接暴露到前端。",
         "stripReferenceMarkers": "移除 [reference:N] 标记",
+        "emptyOutputRetryMaxAttempts": "空输出补偿重试次数",
+        "emptyOutputRetryMaxAttemptsHelp": "默认 0，不重试；仅当正文和 thinking 都为空且不是 content_filter 时才会触发。",
         "modelTitle": "模型映射",
         "modelAliases": "全局模型映射（JSON）",
         "autoDeleteTitle": "会话删除策略",

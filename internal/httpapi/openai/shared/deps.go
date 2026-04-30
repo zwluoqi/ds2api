@@ -37,6 +37,7 @@ type ConfigReader interface {
 	ModelAliases() map[string]string
 	CompatWideInputStrictOutput() bool
 	CompatStripReferenceMarkers() bool
+	CompatEmptyOutputRetryMaxAttempts() int
 	ToolcallMode() string
 	ToolcallEarlyEmitConfidence() string
 	ResponsesStoreTTLSeconds() int

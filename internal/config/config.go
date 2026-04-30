@@ -147,8 +147,9 @@ func (c *Config) normalizeModelAliases() {
 }
 
 type CompatConfig struct {
-	WideInputStrictOutput *bool `json:"wide_input_strict_output,omitempty"`
-	StripReferenceMarkers *bool `json:"strip_reference_markers,omitempty"`
+	WideInputStrictOutput       *bool `json:"wide_input_strict_output,omitempty"`
+	StripReferenceMarkers       *bool `json:"strip_reference_markers,omitempty"`
+	EmptyOutputRetryMaxAttempts int   `json:"empty_output_retry_max_attempts,omitempty"`
 }
 
 type AdminConfig struct {

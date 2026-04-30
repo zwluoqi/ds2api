@@ -178,7 +178,10 @@ func (h *Handler) handleNonStream(w http.ResponseWriter, resp *http.Response, co
 		finalText = replaceCitationMarkersWithLinks(finalText, result.CitationLinks)
 	}
 	detected := detectAssistantToolCalls(finalText, finalThinking, finalToolDetectionThinking, toolNames)
-	if shouldWriteUpstreamEmptyOutputError(finalText) && len(detected.Calls) == 0 {
+	if len(detected.Calls) == 0 {
+		finalText = visibleTextWithContentFilterFallback(finalText, finalThinking, result.ContentFilter)
+	}
+	if shouldWriteUpstreamEmptyOutputError(finalText, finalThinking, result.ContentFilter) && len(detected.Calls) == 0 {
 		status, message, code := upstreamEmptyOutputDetail(result.ContentFilter, finalText, finalThinking)
 		if historySession != nil {
 			historySession.error(status, message, code, finalThinking, finalText)

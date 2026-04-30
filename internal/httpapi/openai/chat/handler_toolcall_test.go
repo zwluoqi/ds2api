@@ -104,7 +104,7 @@ func TestHandleNonStreamReturns429WhenUpstreamOutputEmpty(t *testing.T) {
 	}
 }
 
-func TestHandleNonStreamReturnsContentFilterErrorWhenUpstreamFilteredWithoutOutput(t *testing.T) {
+func TestHandleNonStreamReturnsContentFilterFallbackWhenUpstreamFilteredWithoutOutput(t *testing.T) {
 	h := &Handler{}
 	resp := makeSSEHTTPResponse(
 		`data: {"code":"content_filter"}`,
@@ -113,17 +113,19 @@ func TestHandleNonStreamReturnsContentFilterErrorWhenUpstreamFilteredWithoutOutp
 	rec := httptest.NewRecorder()
 
 	h.handleNonStream(rec, resp, "cid-empty-filtered", "deepseek-v4-flash", "prompt", false, false, nil, nil)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("expected status 400 for filtered upstream output, got %d body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200 for filtered upstream output fallback, got %d body=%s", rec.Code, rec.Body.String())
 	}
 	out := decodeJSONBody(t, rec.Body.String())
-	errObj, _ := out["error"].(map[string]any)
-	if asString(errObj["code"]) != "content_filter" {
-		t.Fatalf("expected code=content_filter, got %#v", out)
+	choices, _ := out["choices"].([]any)
+	choice, _ := choices[0].(map[string]any)
+	message, _ := choice["message"].(map[string]any)
+	if asString(message["content"]) != "【content filter，please update request content】" {
+		t.Fatalf("expected content_filter fallback content, got %#v", message)
 	}
 }
 
-func TestHandleNonStreamReturns429WhenUpstreamHasOnlyThinking(t *testing.T) {
+func TestHandleNonStreamCompletesWhenUpstreamHasOnlyThinking(t *testing.T) {
 	h := &Handler{}
 	resp := makeSSEHTTPResponse(
 		`data: {"p":"response/thinking_content","v":"Only thinking"}`,
@@ -132,13 +134,15 @@ func TestHandleNonStreamReturns429WhenUpstreamHasOnlyThinking(t *testing.T) {
 	rec := httptest.NewRecorder()
 
 	h.handleNonStream(rec, resp, "cid-thinking-only", "deepseek-v4-pro", "prompt", true, false, nil, nil)
-	if rec.Code != http.StatusTooManyRequests {
-		t.Fatalf("expected status 429 for thinking-only upstream output, got %d body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200 for thinking-only upstream output, got %d body=%s", rec.Code, rec.Body.String())
 	}
 	out := decodeJSONBody(t, rec.Body.String())
-	errObj, _ := out["error"].(map[string]any)
-	if asString(errObj["code"]) != "upstream_empty_output" {
-		t.Fatalf("expected code=upstream_empty_output, got %#v", out)
+	choices, _ := out["choices"].([]any)
+	choice, _ := choices[0].(map[string]any)
+	message, _ := choice["message"].(map[string]any)
+	if asString(message["content"]) != "【content filter，please update request content】" || asString(message["reasoning_content"]) != "Only thinking" {
+		t.Fatalf("expected fallback content with reasoning_content, got %#v", message)
 	}
 }
 

@@ -285,11 +285,11 @@ func TestChatCompletionsStreamEmitsFailureFrameWhenUpstreamOutputEmpty(t *testin
 
 func TestChatCompletionsStreamRetriesEmptyOutputOnSameSession(t *testing.T) {
 	ds := &streamStatusDSSeqStub{resps: []*http.Response{
-		makeOpenAISSEHTTPResponse(`data: {"response_message_id":42,"p":"response/thinking_content","v":"plan"}`, "data: [DONE]"),
+		makeOpenAISSEHTTPResponse(`data: {"response_message_id":42}`, "data: [DONE]"),
 		makeOpenAISSEHTTPResponse(`data: {"p":"response/content","v":"visible"}`, "data: [DONE]"),
 	}}
 	h := &openAITestSurface{
-		Store: mockOpenAIConfig{wideInput: true},
+		Store: mockOpenAIConfig{wideInput: true, emptyRetryAttempts: 1},
 		Auth:  streamStatusAuthStub{},
 		DS:    ds,
 	}
@@ -326,8 +326,8 @@ func TestChatCompletionsStreamRetriesEmptyOutputOnSameSession(t *testing.T) {
 	if doneCount != 1 {
 		t.Fatalf("expected one [DONE], got %d body=%s", doneCount, rec.Body.String())
 	}
-	if len(frames) != 3 {
-		t.Fatalf("expected reasoning, content, finish frames, got %#v body=%s", frames, rec.Body.String())
+	if len(frames) != 2 {
+		t.Fatalf("expected content and finish frames, got %#v body=%s", frames, rec.Body.String())
 	}
 	id := asString(frames[0]["id"])
 	for _, frame := range frames[1:] {
@@ -335,7 +335,7 @@ func TestChatCompletionsStreamRetriesEmptyOutputOnSameSession(t *testing.T) {
 			t.Fatalf("expected same completion id across retry stream, frames=%#v", frames)
 		}
 	}
-	choices, _ := frames[1]["choices"].([]any)
+	choices, _ := frames[0]["choices"].([]any)
 	choice, _ := choices[0].(map[string]any)
 	delta, _ := choice["delta"].(map[string]any)
 	if asString(delta["content"]) != "visible" {
@@ -343,13 +343,12 @@ func TestChatCompletionsStreamRetriesEmptyOutputOnSameSession(t *testing.T) {
 	}
 }
 
-func TestChatCompletionsNonStreamRetriesThinkingOnlyOutput(t *testing.T) {
+func TestChatCompletionsNonStreamCompletesThinkingOnlyOutput(t *testing.T) {
 	ds := &streamStatusDSSeqStub{resps: []*http.Response{
 		makeOpenAISSEHTTPResponse(`data: {"response_message_id":99,"p":"response/thinking_content","v":"plan"}`, "data: [DONE]"),
-		makeOpenAISSEHTTPResponse(`data: {"p":"response/content","v":"visible"}`, "data: [DONE]"),
 	}}
 	h := &openAITestSurface{
-		Store: mockOpenAIConfig{wideInput: true},
+		Store: mockOpenAIConfig{wideInput: true, emptyRetryAttempts: 1},
 		Auth:  streamStatusAuthStub{},
 		DS:    ds,
 	}
@@ -361,14 +360,10 @@ func TestChatCompletionsNonStreamRetriesThinkingOnlyOutput(t *testing.T) {
 	newOpenAITestRouter(h).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("expected 200 after retry, got %d body=%s", rec.Code, rec.Body.String())
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
 	}
-	if len(ds.payloads) != 2 {
-		t.Fatalf("expected one synthetic retry call, got %d", len(ds.payloads))
-	}
-	// Verify multi-turn chaining.
-	if parentID, ok := ds.payloads[1]["parent_message_id"].(int); !ok || parentID != 99 {
-		t.Fatalf("expected retry parent_message_id=99, got %#v", ds.payloads[1]["parent_message_id"])
+	if len(ds.payloads) != 1 {
+		t.Fatalf("expected no synthetic retry call, got %d", len(ds.payloads))
 	}
 	var out map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
@@ -377,8 +372,8 @@ func TestChatCompletionsNonStreamRetriesThinkingOnlyOutput(t *testing.T) {
 	choices, _ := out["choices"].([]any)
 	choice, _ := choices[0].(map[string]any)
 	message, _ := choice["message"].(map[string]any)
-	if asString(message["content"]) != "visible" {
-		t.Fatalf("expected retry visible content, got %#v", message)
+	if asString(message["content"]) != "【content filter，please update request content】" {
+		t.Fatalf("expected fallback visible content, got %#v", message)
 	}
 	if !strings.Contains(asString(message["reasoning_content"]), "plan") {
 		t.Fatalf("expected first-attempt reasoning to be preserved, got %#v", message)
@@ -391,7 +386,7 @@ func TestChatCompletionsContentFilterDoesNotRetry(t *testing.T) {
 		makeOpenAISSEHTTPResponse(`data: {"p":"response/content","v":"visible"}`, "data: [DONE]"),
 	}}
 	h := &openAITestSurface{
-		Store: mockOpenAIConfig{wideInput: true},
+		Store: mockOpenAIConfig{wideInput: true, emptyRetryAttempts: 1},
 		Auth:  streamStatusAuthStub{},
 		DS:    ds,
 	}
@@ -402,11 +397,21 @@ func TestChatCompletionsContentFilterDoesNotRetry(t *testing.T) {
 	rec := httptest.NewRecorder()
 	newOpenAITestRouter(h).ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("expected content_filter 400, got %d body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected content_filter fallback 200, got %d body=%s", rec.Code, rec.Body.String())
 	}
 	if len(ds.payloads) != 1 {
 		t.Fatalf("expected no retry on content_filter, got %d calls", len(ds.payloads))
+	}
+	var out map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatalf("decode response failed: %v body=%s", err, rec.Body.String())
+	}
+	choices, _ := out["choices"].([]any)
+	choice, _ := choices[0].(map[string]any)
+	message, _ := choice["message"].(map[string]any)
+	if asString(message["content"]) != "【content filter，please update request content】" {
+		t.Fatalf("expected content_filter fallback content, got %#v", message)
 	}
 }
 
@@ -458,13 +463,13 @@ func TestResponsesStreamUsageIgnoresBatchAccumulatedTokenUsage(t *testing.T) {
 	}
 }
 
-func TestResponsesStreamRetriesThinkingOnlyOutput(t *testing.T) {
+func TestResponsesStreamRetriesEmptyOutput(t *testing.T) {
 	ds := &streamStatusDSSeqStub{resps: []*http.Response{
-		makeOpenAISSEHTTPResponse(`data: {"response_message_id":77,"p":"response/thinking_content","v":"plan"}`, "data: [DONE]"),
+		makeOpenAISSEHTTPResponse(`data: {"response_message_id":77}`, "data: [DONE]"),
 		makeOpenAISSEHTTPResponse(`data: {"p":"response/content","v":"visible"}`, "data: [DONE]"),
 	}}
 	h := &openAITestSurface{
-		Store: mockOpenAIConfig{wideInput: true},
+		Store: mockOpenAIConfig{wideInput: true, emptyRetryAttempts: 1},
 		Auth:  streamStatusAuthStub{},
 		DS:    ds,
 	}
@@ -489,18 +494,20 @@ func TestResponsesStreamRetriesThinkingOnlyOutput(t *testing.T) {
 	if strings.Contains(body, "response.failed") {
 		t.Fatalf("did not expect premature response.failed, body=%s", body)
 	}
-	if !strings.Contains(body, "response.reasoning.delta") || !strings.Contains(body, "response.output_text.delta") || !strings.Contains(body, "response.completed") {
-		t.Fatalf("expected reasoning, text delta, and completed events, body=%s", body)
+	if strings.Contains(body, "response.reasoning.delta") {
+		t.Fatalf("did not expect reasoning delta from empty first attempt, body=%s", body)
+	}
+	if !strings.Contains(body, "response.output_text.delta") || !strings.Contains(body, "response.completed") {
+		t.Fatalf("expected text delta and completed events, body=%s", body)
 	}
 	if strings.Count(body, "data: [DONE]") != 1 {
 		t.Fatalf("expected one [DONE], body=%s", body)
 	}
 }
 
-func TestResponsesNonStreamRetriesThinkingOnlyOutput(t *testing.T) {
+func TestResponsesNonStreamCompletesThinkingOnlyOutput(t *testing.T) {
 	ds := &streamStatusDSSeqStub{resps: []*http.Response{
 		makeOpenAISSEHTTPResponse(`data: {"response_message_id":88,"p":"response/thinking_content","v":"plan"}`, "data: [DONE]"),
-		makeOpenAISSEHTTPResponse(`data: {"p":"response/content","v":"visible"}`, "data: [DONE]"),
 	}}
 	h := &openAITestSurface{
 		Store: mockOpenAIConfig{wideInput: true},
@@ -515,21 +522,17 @@ func TestResponsesNonStreamRetriesThinkingOnlyOutput(t *testing.T) {
 	newOpenAITestRouter(h).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("expected 200 after retry, got %d body=%s", rec.Code, rec.Body.String())
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
 	}
-	if len(ds.payloads) != 2 {
-		t.Fatalf("expected one synthetic retry call, got %d", len(ds.payloads))
-	}
-	// Verify multi-turn chaining.
-	if parentID, ok := ds.payloads[1]["parent_message_id"].(int); !ok || parentID != 88 {
-		t.Fatalf("expected retry parent_message_id=88, got %#v", ds.payloads[1]["parent_message_id"])
+	if len(ds.payloads) != 1 {
+		t.Fatalf("expected no synthetic retry call, got %d", len(ds.payloads))
 	}
 	var out map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatalf("decode response failed: %v body=%s", err, rec.Body.String())
 	}
-	if asString(out["output_text"]) != "visible" {
-		t.Fatalf("expected retry visible output_text, got %#v", out["output_text"])
+	if asString(out["output_text"]) != "【content filter，please update request content】" {
+		t.Fatalf("expected fallback output_text, got %#v", out["output_text"])
 	}
 	output, _ := out["output"].([]any)
 	if len(output) == 0 {

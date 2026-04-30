@@ -110,7 +110,8 @@ func (h *Handler) handleVercelStreamPrepare(w http.ResponseWriter, r *http.Reque
 		"thinking_enabled": stdReq.Thinking,
 		"search_enabled":   stdReq.Search,
 		"compat": map[string]any{
-			"strip_reference_markers": h.compatStripReferenceMarkers(),
+			"strip_reference_markers":         h.compatStripReferenceMarkers(),
+			"empty_output_retry_max_attempts": h.emptyOutputRetryMaxAttempts(),
 		},
 		"tool_names":     stdReq.ToolNames,
 		"deepseek_token": a.DeepSeekToken,

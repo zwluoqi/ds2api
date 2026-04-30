@@ -135,10 +135,14 @@ func (s *chatStreamRuntime) finalize(finishReason string, deferEmptyOutput bool)
 	s.finalErrorCode = ""
 	finalThinking := s.thinking.String()
 	finalToolDetectionThinking := s.toolDetectionThinking.String()
-	finalText := cleanVisibleOutput(s.text.String(), s.stripReferenceMarkers)
+	rawFinalText := cleanVisibleOutput(s.text.String(), s.stripReferenceMarkers)
+	finalText := rawFinalText
 	s.finalThinking = finalThinking
-	s.finalText = finalText
 	detected := detectAssistantToolCalls(finalText, finalThinking, finalToolDetectionThinking, s.toolNames)
+	if len(detected.Calls) == 0 {
+		finalText = visibleTextWithContentFilterFallback(finalText, finalThinking, finishReason == "content_filter")
+	}
+	s.finalText = finalText
 	if len(detected.Calls) > 0 && !s.toolCallsDoneEmitted {
 		finishReason = "tool_calls"
 		delta := map[string]any{
@@ -206,7 +210,23 @@ func (s *chatStreamRuntime) finalize(finishReason string, deferEmptyOutput bool)
 	if len(detected.Calls) > 0 || s.toolCallsEmitted {
 		finishReason = "tool_calls"
 	}
-	if len(detected.Calls) == 0 && !s.toolCallsEmitted && strings.TrimSpace(finalText) == "" {
+	if len(detected.Calls) == 0 && !s.toolCallsEmitted && strings.TrimSpace(rawFinalText) == "" && strings.TrimSpace(finalText) != "" {
+		delta := map[string]any{
+			"content": finalText,
+		}
+		if !s.firstChunkSent {
+			delta["role"] = "assistant"
+			s.firstChunkSent = true
+		}
+		s.sendChunk(openaifmt.BuildChatStreamChunk(
+			s.completionID,
+			s.created,
+			s.model,
+			[]map[string]any{openaifmt.BuildChatStreamDeltaChoice(0, delta)},
+			nil,
+		))
+	}
+	if len(detected.Calls) == 0 && !s.toolCallsEmitted && shouldWriteUpstreamEmptyOutputError(finalText, finalThinking, finishReason == "content_filter") {
 		status, message, code := upstreamEmptyOutputDetail(finishReason == "content_filter", finalText, finalThinking)
 		if deferEmptyOutput {
 			s.finalErrorStatus = status

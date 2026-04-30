@@ -138,8 +138,12 @@ func replaceCitationMarkersWithLinks(text string, links map[int]string) string {
 	return shared.ReplaceCitationMarkersWithLinks(text, links)
 }
 
-func shouldWriteUpstreamEmptyOutputError(text string) bool {
-	return shared.ShouldWriteUpstreamEmptyOutputError(text)
+func shouldWriteUpstreamEmptyOutputError(text, thinking string, contentFilter bool) bool {
+	return shared.ShouldWriteUpstreamEmptyOutputError(text, thinking, contentFilter)
+}
+
+func visibleTextWithContentFilterFallback(text, thinking string, contentFilter bool) string {
+	return shared.VisibleTextWithContentFilterFallback(text, thinking, contentFilter)
 }
 
 func upstreamEmptyOutputDetail(contentFilter bool, text, thinking string) (int, string, string) {
@@ -150,12 +154,18 @@ func writeUpstreamEmptyOutputError(w http.ResponseWriter, text, thinking string,
 	return shared.WriteUpstreamEmptyOutputError(w, text, thinking, contentFilter)
 }
 
-func emptyOutputRetryEnabled() bool {
-	return shared.EmptyOutputRetryEnabled()
+func (h *Handler) emptyOutputRetryEnabled() bool {
+	if h == nil {
+		return false
+	}
+	return shared.EmptyOutputRetryEnabled(h.Store)
 }
 
-func emptyOutputRetryMaxAttempts() int {
-	return shared.EmptyOutputRetryMaxAttempts()
+func (h *Handler) emptyOutputRetryMaxAttempts() int {
+	if h == nil {
+		return 0
+	}
+	return shared.EmptyOutputRetryMaxAttempts(h.Store)
 }
 
 func clonePayloadForEmptyOutputRetry(payload map[string]any, parentMessageID int) map[string]any {

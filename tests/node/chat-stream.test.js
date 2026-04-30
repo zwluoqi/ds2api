@@ -194,11 +194,23 @@ test('vercel stream emits Go-parity empty-output failure on DONE', async () => {
   assert.equal(frames[1], '[DONE]');
 });
 
+test('vercel stream completes reasoning-only output without failure', async () => {
+  const { frames } = await runMockVercelStream([
+    'data: {"p":"response/thinking_content","v":"plan"}\n\n',
+    'data: [DONE]\n\n',
+  ], { thinking_enabled: true });
+  const parsed = frames.filter((frame) => frame !== '[DONE]').map((frame) => JSON.parse(frame));
+  assert.equal(parsed.some((frame) => frame.error), false);
+  assert.equal(parsed.at(-1).choices[0].finish_reason, 'stop');
+  assert.equal(parsed[0].choices[0].delta.reasoning_content, 'plan');
+  assert.equal(parsed[1].choices[0].delta.content, '【content filter，please update request content】');
+});
+
 test('vercel stream retries empty output once and keeps one terminal frame', async () => {
   const { frames, fetchURLs, fetchBodies } = await runMockVercelStreamSequence([
     ['data: [DONE]\n\n'],
     ['data: {"p":"response/content","v":"visible"}\n\n', 'data: [DONE]\n\n'],
-  ]);
+  ], { compat: { strip_reference_markers: true, empty_output_retry_max_attempts: 1 } });
   const parsed = frames.filter((frame) => frame !== '[DONE]').map((frame) => JSON.parse(frame));
   const completionBodies = fetchBodies.filter((body) => Object.hasOwn(body, 'prompt'));
   assert.equal(fetchURLs.filter((url) => url === 'https://chat.deepseek.com/api/v0/chat/completion').length, 2);
@@ -243,7 +255,7 @@ test('vercel stream reuses prior PoW when refresh fails', async () => {
         final_prompt: 'hello',
         thinking_enabled: false,
         search_enabled: false,
-        compat: { strip_reference_markers: true },
+        compat: { strip_reference_markers: true, empty_output_retry_max_attempts: 1 },
         tool_names: [],
         deepseek_token: 'deepseek-token',
         pow_header: 'pow-header-initial',
@@ -282,14 +294,14 @@ test('vercel stream reuses prior PoW when refresh fails', async () => {
   }
 });
 
-test('vercel stream emits content_filter failure when upstream filters empty output', async () => {
+test('vercel stream emits content_filter fallback when upstream filters empty output', async () => {
   const { frames } = await runMockVercelStream(['data: {"code":"content_filter"}\n\n']);
-  assert.equal(frames.length, 2);
-  const failed = JSON.parse(frames[0]);
-  assert.equal(failed.status_code, 400);
-  assert.equal(failed.error.type, 'invalid_request_error');
-  assert.equal(failed.error.code, 'content_filter');
-  assert.equal(frames[1], '[DONE]');
+  assert.equal(frames.length, 3);
+  const completed = JSON.parse(frames[0]);
+  assert.equal(completed.choices[0].delta.content, '【content filter，please update request content】');
+  const finished = JSON.parse(frames[1]);
+  assert.equal(finished.choices[0].finish_reason, 'content_filter');
+  assert.equal(frames[2], '[DONE]');
 });
 
 test('vercel stream keeps stop finish when content_filter arrives after visible text', async () => {

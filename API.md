@@ -346,6 +346,7 @@ data: [DONE]
 - **非代码块上下文**下，工具负载即使与普通文本混合，也会按特征识别并产出可执行 tool call（前后普通文本仍可透传）。
 - 解析器当前把 DSML 外壳（`<|DSML|tool_calls>` / `<|DSML|invoke name="...">` / `<|DSML|parameter name="...">`）、DSML wrapper 别名（`<dsml|tool_calls>`、`<|tool_calls>`、`<｜tool_calls>`）、常见 DSML 分隔符漏写形态（如 `<|DSML tool_calls>` / `<|DSML invoke>` / `<|DSML parameter>`）、`DSML` 与工具标签名黏连的常见 typo（如 `<DSMLtool_calls>` / `<DSMLinvoke>` / `<DSMLparameter>`）和旧式 canonical XML 工具块（`<tool_calls>` / `<invoke name="...">` / `<parameter name="...">`）作为可执行调用解析；DSML 会先归一化回 XML，内部仍以 XML 解析语义为准。旧式 `<tools>`、`<tool_call>`、`<tool_name>`、`<param>`、`<function_call>`、`tool_use`、antml 风格与纯 JSON `tool_calls` 片段默认都会按普通文本处理。
 - 当最终可见正文为空但思维链里包含可执行工具调用时，Chat / Responses 会在收尾阶段补发标准 OpenAI `tool_calls` / `function_call` 输出；如果客户端未开启 thinking / reasoning，该思维链只用于检测，不会作为可见正文或 `reasoning_content` 暴露。
+- 当上游返回 `content_filter` 且没有正文，或只有 thinking / reasoning 没有正文时，Chat / Responses 会补可见正文 `【content filter，please update request content】` 并按正常完成返回。
 - Markdown fenced code block（例如 ```json ... ```）中的 `tool_calls` 仅视为示例文本，不会被执行。
 
 ---
@@ -726,7 +727,7 @@ data: {"type":"message_stop"}
 - `success`
 - `admin`（`has_password_hash`、`jwt_expire_hours`、`jwt_valid_after_unix`、`default_password_warning`）
 - `runtime`（`account_max_inflight`、`account_max_queue`、`global_max_inflight`、`token_refresh_interval_hours`、`account_selection_mode`）
-- `compat`（`wide_input_strict_output`、`strip_reference_markers`）
+- `compat`（`wide_input_strict_output`、`strip_reference_markers`、`empty_output_retry_max_attempts`，默认 `0` 不重试）
 - `responses` / `embeddings`
 - `auto_delete`（`mode`：`none` / `single` / `all`；旧配置 `sessions=true` 仍按 `all` 处理）
 - `current_input_file`（`enabled` 默认返回 `true`、`min_chars`）
@@ -740,7 +741,7 @@ data: {"type":"message_stop"}
 
 - `admin.jwt_expire_hours`
 - `runtime.account_max_inflight` / `runtime.account_max_queue` / `runtime.global_max_inflight` / `runtime.token_refresh_interval_hours` / `runtime.account_selection_mode`（`token_first` / `round_robin`）
-- `compat.wide_input_strict_output` / `compat.strip_reference_markers`
+- `compat.wide_input_strict_output` / `compat.strip_reference_markers` / `compat.empty_output_retry_max_attempts`
 - `responses.store_ttl_seconds`
 - `embeddings.provider`
 - `auto_delete.mode`

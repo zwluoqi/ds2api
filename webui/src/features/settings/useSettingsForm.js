@@ -13,7 +13,7 @@ const MAX_AUTO_FETCH_FAILURES = 3
 const DEFAULT_FORM = {
     admin: { jwt_expire_hours: 24 },
     runtime: { account_max_inflight: 2, account_max_queue: 10, global_max_inflight: 10, token_refresh_interval_hours: 6, account_selection_mode: 'token_first' },
-    compat: { strip_reference_markers: true },
+    compat: { strip_reference_markers: true, empty_output_retry_max_attempts: 0 },
     responses: { store_ttl_seconds: 900 },
     embeddings: { provider: '' },
     auto_delete: { mode: 'none' },
@@ -63,6 +63,7 @@ function fromServerForm(data) {
         },
         compat: {
             strip_reference_markers: data.compat?.strip_reference_markers ?? true,
+            empty_output_retry_max_attempts: Number(data.compat?.empty_output_retry_max_attempts ?? 0),
         },
         responses: {
             store_ttl_seconds: Number(data.responses?.store_ttl_seconds || 900),
@@ -99,6 +100,7 @@ function toServerPayload(form) {
         },
         compat: {
             strip_reference_markers: Boolean(form.compat?.strip_reference_markers ?? true),
+            empty_output_retry_max_attempts: Math.max(0, Number(form.compat?.empty_output_retry_max_attempts ?? 0)),
         },
         responses: { store_ttl_seconds: Number(form.responses.store_ttl_seconds) },
         embeddings: { provider: String(form.embeddings.provider || '').trim() },

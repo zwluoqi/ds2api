@@ -35,7 +35,7 @@ func (c Config) MarshalJSON() ([]byte, error) {
 	if c.Runtime.AccountMaxInflight > 0 || c.Runtime.AccountMaxQueue > 0 || c.Runtime.GlobalMaxInflight > 0 || c.Runtime.TokenRefreshIntervalHours > 0 {
 		m["runtime"] = c.Runtime
 	}
-	if c.Compat.WideInputStrictOutput != nil || c.Compat.StripReferenceMarkers != nil {
+	if c.Compat.WideInputStrictOutput != nil || c.Compat.StripReferenceMarkers != nil || c.Compat.EmptyOutputRetryMaxAttempts > 0 {
 		m["compat"] = c.Compat
 	}
 	if c.Responses.StoreTTLSeconds > 0 {
@@ -161,8 +161,9 @@ func (c Config) Clone() Config {
 		Admin:        c.Admin,
 		Runtime:      c.Runtime,
 		Compat: CompatConfig{
-			WideInputStrictOutput: cloneBoolPtr(c.Compat.WideInputStrictOutput),
-			StripReferenceMarkers: cloneBoolPtr(c.Compat.StripReferenceMarkers),
+			WideInputStrictOutput:       cloneBoolPtr(c.Compat.WideInputStrictOutput),
+			StripReferenceMarkers:       cloneBoolPtr(c.Compat.StripReferenceMarkers),
+			EmptyOutputRetryMaxAttempts: c.Compat.EmptyOutputRetryMaxAttempts,
 		},
 		Responses:  c.Responses,
 		Embeddings: c.Embeddings,

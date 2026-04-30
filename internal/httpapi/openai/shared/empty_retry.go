@@ -4,12 +4,19 @@ import "strings"
 
 const EmptyOutputRetrySuffix = "Previous reply had no visible output. Please regenerate the visible final answer or tool call now."
 
-func EmptyOutputRetryEnabled() bool {
-	return true
+func EmptyOutputRetryEnabled(store ConfigReader) bool {
+	return EmptyOutputRetryMaxAttempts(store) > 0
 }
 
-func EmptyOutputRetryMaxAttempts() int {
-	return 1
+func EmptyOutputRetryMaxAttempts(store ConfigReader) int {
+	if store == nil {
+		return 0
+	}
+	n := store.CompatEmptyOutputRetryMaxAttempts()
+	if n < 0 {
+		return 0
+	}
+	return n
 }
 
 func ClonePayloadWithEmptyOutputRetryPrompt(payload map[string]any) map[string]any {

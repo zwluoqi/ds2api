@@ -436,6 +436,8 @@
         "compatibilityTitle": "Compatibility",
         "compatibilityDesc": "Compatibility controls that keep stream output closer to the wire format or safer for the web UI.",
         "stripReferenceMarkers": "Strip [reference:N] markers",
+        "emptyOutputRetryMaxAttempts": "Empty-output retry attempts",
+        "emptyOutputRetryMaxAttemptsHelp": "Default 0 disables retry. Retries only run when both visible text and thinking are empty and the stop reason is not content_filter.",
         "modelTitle": "Model mapping",
         "modelAliases": "Global model aliases (JSON)",
         "autoDeleteTitle": "Session Cleanup Policy",

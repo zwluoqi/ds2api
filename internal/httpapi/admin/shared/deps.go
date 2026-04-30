@@ -41,6 +41,7 @@ type ConfigStore interface {
 	ThinkingInjectionEnabled() bool
 	ThinkingInjectionPrompt() string
 	CompatStripReferenceMarkers() bool
+	CompatEmptyOutputRetryMaxAttempts() int
 	AutoDeleteSessions() bool
 }
 

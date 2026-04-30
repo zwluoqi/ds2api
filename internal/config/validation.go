@@ -15,6 +15,9 @@ func ValidateConfig(c Config) error {
 	if err := ValidateRuntimeConfig(c.Runtime); err != nil {
 		return err
 	}
+	if err := ValidateCompatConfig(c.Compat); err != nil {
+		return err
+	}
 	if err := ValidateResponsesConfig(c.Responses); err != nil {
 		return err
 	}
@@ -103,6 +106,10 @@ func ValidateRuntimeConfig(runtime RuntimeConfig) error {
 		return fmt.Errorf("runtime.global_max_inflight must be >= runtime.account_max_inflight")
 	}
 	return nil
+}
+
+func ValidateCompatConfig(compat CompatConfig) error {
+	return ValidateIntRange("compat.empty_output_retry_max_attempts", compat.EmptyOutputRetryMaxAttempts, 0, 5, false)
 }
 
 func ValidateResponsesConfig(responses ResponsesConfig) error {

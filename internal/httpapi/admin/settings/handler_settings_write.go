@@ -32,6 +32,7 @@ func (h *Handler) updateSettings(w http.ResponseWriter, r *http.Request) {
 	currentInputMinCharsSet := hasNestedSettingsKey(req, "current_input_file", "min_chars")
 	thinkingInjectionEnabledSet := hasNestedSettingsKey(req, "thinking_injection", "enabled")
 	thinkingInjectionPromptSet := hasNestedSettingsKey(req, "thinking_injection", "prompt")
+	emptyOutputRetryMaxAttemptsSet := hasNestedSettingsKey(req, "compat", "empty_output_retry_max_attempts")
 
 	if err := h.Store.Update(func(c *config.Config) error {
 		if adminCfg != nil {
@@ -62,6 +63,9 @@ func (h *Handler) updateSettings(w http.ResponseWriter, r *http.Request) {
 			}
 			if compatCfg.StripReferenceMarkers != nil {
 				c.Compat.StripReferenceMarkers = compatCfg.StripReferenceMarkers
+			}
+			if emptyOutputRetryMaxAttemptsSet {
+				c.Compat.EmptyOutputRetryMaxAttempts = compatCfg.EmptyOutputRetryMaxAttempts
 			}
 		}
 		if responsesCfg != nil && responsesCfg.StoreTTLSeconds > 0 {

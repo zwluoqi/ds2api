@@ -99,6 +99,13 @@ func parseSettingsUpdateRequest(req map[string]any) (*config.AdminConfig, *confi
 			b := boolFrom(v)
 			cfg.StripReferenceMarkers = &b
 		}
+		if v, exists := raw["empty_output_retry_max_attempts"]; exists {
+			n := intFrom(v)
+			if err := config.ValidateIntRange("compat.empty_output_retry_max_attempts", n, 0, 5, true); err != nil {
+				return nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+			}
+			cfg.EmptyOutputRetryMaxAttempts = n
+		}
 		compatCfg = cfg
 	}
 

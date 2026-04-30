@@ -39,6 +39,15 @@ func (s *Store) CompatStripReferenceMarkers() bool {
 	return *s.cfg.Compat.StripReferenceMarkers
 }
 
+func (s *Store) CompatEmptyOutputRetryMaxAttempts() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.cfg.Compat.EmptyOutputRetryMaxAttempts < 0 {
+		return 0
+	}
+	return s.cfg.Compat.EmptyOutputRetryMaxAttempts
+}
+
 func (s *Store) ToolcallMode() string {
 	return "feature_match"
 }

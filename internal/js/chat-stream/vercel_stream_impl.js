@@ -36,7 +36,7 @@ const {
 const DEEPSEEK_COMPLETION_URL = 'https://chat.deepseek.com/api/v0/chat/completion';
 const DEEPSEEK_CONTINUE_URL = 'https://chat.deepseek.com/api/v0/chat/continue';
 const EMPTY_OUTPUT_RETRY_SUFFIX = 'Previous reply had no visible output. Please regenerate the visible final answer or tool call now.';
-const EMPTY_OUTPUT_RETRY_MAX_ATTEMPTS = 1;
+const CONTENT_FILTER_FALLBACK_MESSAGE = '【content filter，please update request content】';
 const AUTO_CONTINUE_MAX_ROUNDS = 8;
 
 async function handleVercelStream(req, res, rawBody, payload) {
@@ -59,6 +59,7 @@ async function handleVercelStream(req, res, rawBody, payload) {
   const toolNames = toolPolicy.toolNames;
   const emitEarlyToolDeltas = toolPolicy.emitEarlyToolDeltas;
   const stripReferenceMarkers = boolDefaultTrue(prep.body.compat && prep.body.compat.strip_reference_markers);
+  const emptyOutputRetryMaxAttempts = Math.max(0, numberValue(prep.body.compat && prep.body.compat.empty_output_retry_max_attempts));
 
   if (!model || !leaseID || !deepseekToken || !initialPowHeader || !completionPayload) {
     writeOpenAIError(res, 500, 'invalid vercel prepare response');
@@ -201,6 +202,8 @@ async function handleVercelStream(req, res, rawBody, payload) {
         await releaseLease();
         return true;
       }
+      const rawOutputText = outputText;
+      outputText = visibleTextWithContentFilterFallback(outputText, thinkingText, reason === 'content_filter');
       const detected = parseStandaloneToolCalls(outputText, toolNames);
       if (detected.length > 0 && !toolCallsDoneEmitted) {
         toolCallsEmitted = true;
@@ -224,7 +227,10 @@ async function handleVercelStream(req, res, rawBody, payload) {
       if (detected.length > 0 || toolCallsEmitted) {
         reason = 'tool_calls';
       }
-      if (detected.length === 0 && !toolCallsEmitted && outputText.trim() === '') {
+      if (detected.length === 0 && !toolCallsEmitted && rawOutputText.trim() === '' && outputText.trim() !== '') {
+        sendDeltaFrame({ content: outputText });
+      }
+      if (detected.length === 0 && !toolCallsEmitted && shouldWriteUpstreamEmptyOutputError(outputText, thinkingText, reason === 'content_filter')) {
         if (options.deferEmpty && reason !== 'content_filter') {
           return false;
         }
@@ -409,11 +415,11 @@ async function handleVercelStream(req, res, rawBody, payload) {
     let retryAttempts = 0;
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      const processed = await processStream(completionRes, retryAttempts < EMPTY_OUTPUT_RETRY_MAX_ATTEMPTS);
+      const processed = await processStream(completionRes, retryAttempts < emptyOutputRetryMaxAttempts);
       if (processed.terminal) {
         return;
       }
-      if (!processed.retryable || retryAttempts >= EMPTY_OUTPUT_RETRY_MAX_ATTEMPTS) {
+      if (!processed.retryable || retryAttempts >= emptyOutputRetryMaxAttempts) {
         await finish('stop');
         return;
       }
@@ -560,19 +566,30 @@ function numberValue(v) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function upstreamEmptyOutputDetail(contentFilter, _text, thinking) {
+function shouldWriteUpstreamEmptyOutputError(text, thinking, contentFilter) {
+  void contentFilter;
+  if (text !== '') {
+    return false;
+  }
+  return thinking.trim() === '';
+}
+
+function visibleTextWithContentFilterFallback(text, thinking, contentFilter) {
+  if (text.trim() !== '') {
+    return text;
+  }
+  if (contentFilter || thinking.trim() !== '') {
+    return CONTENT_FILTER_FALLBACK_MESSAGE;
+  }
+  return text;
+}
+
+function upstreamEmptyOutputDetail(contentFilter, _text, _thinking) {
   if (contentFilter) {
     return {
       status: 400,
       message: 'Upstream content filtered the response and returned no output.',
       code: 'content_filter',
-    };
-  }
-  if (thinking !== '') {
-    return {
-      status: 429,
-      message: 'Upstream account hit a rate limit and returned reasoning without visible output.',
-      code: 'upstream_empty_output',
     };
   }
   return {

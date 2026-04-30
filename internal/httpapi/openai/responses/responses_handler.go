@@ -147,6 +147,9 @@ func (h *Handler) handleResponsesNonStream(w http.ResponseWriter, resp *http.Res
 		sanitizedText = replaceCitationMarkersWithLinks(sanitizedText, result.CitationLinks)
 	}
 	textParsed := detectAssistantToolCalls(sanitizedText, sanitizedThinking, toolDetectionThinking, toolNames)
+	if len(textParsed.Calls) == 0 {
+		sanitizedText = visibleTextWithContentFilterFallback(sanitizedText, sanitizedThinking, result.ContentFilter)
+	}
 	if len(textParsed.Calls) == 0 && writeUpstreamEmptyOutputError(w, sanitizedText, sanitizedThinking, result.ContentFilter) {
 		return
 	}

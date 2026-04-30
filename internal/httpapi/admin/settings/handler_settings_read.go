@@ -28,7 +28,11 @@ func (h *Handler) getSettings(w http.ResponseWriter, _ *http.Request) {
 			"token_refresh_interval_hours": h.Store.RuntimeTokenRefreshIntervalHours(),
 			"account_selection_mode":       h.Store.RuntimeAccountSelectionMode(),
 		},
-		"compat":      snap.Compat,
+		"compat": map[string]any{
+			"wide_input_strict_output":        h.Store.Snapshot().Compat.WideInputStrictOutput,
+			"strip_reference_markers":         h.Store.CompatStripReferenceMarkers(),
+			"empty_output_retry_max_attempts": h.Store.CompatEmptyOutputRetryMaxAttempts(),
+		},
 		"responses":   snap.Responses,
 		"embeddings":  snap.Embeddings,
 		"auto_delete": snap.AutoDelete,

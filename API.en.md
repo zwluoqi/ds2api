@@ -336,6 +336,7 @@ Additional notes:
 
 - The parser treats DSML shell tool blocks (`<|DSML|tool_calls>` / `<|DSML|invoke name="...">` / `<|DSML|parameter name="...">`) and legacy canonical XML tool blocks (`<tool_calls>` / `<invoke name="...">` / `<parameter name="...">`) as executable tool calls. DSML is normalized back to XML at the parser entry; internal parsing remains XML-based. Legacy `<tools>`, `<tool_call>`, `<tool_name>`, `<param>`, `<function_call>`, `tool_use`, antml variants, and standalone JSON `tool_calls` payloads are treated as plain text.
 - If the final visible response text is empty but the reasoning stream contains an executable tool call, Chat / Responses emits a standard OpenAI `tool_calls` / `function_call` output during finalization. If thinking/reasoning was not enabled by the client, that reasoning text is used only for detection and is not exposed as visible text or `reasoning_content`.
+- If upstream returns `content_filter` without visible text, or only returns thinking/reasoning without visible text, Chat / Responses fills visible text with `【content filter，please update request content】` and completes normally.
 - `tool_calls` shown inside fenced markdown code blocks (for example, ```json ... ```) are treated as examples, not executable calls.
 
 ---
@@ -712,7 +713,7 @@ Reads runtime settings and status, including:
 - `success`
 - `admin` (`has_password_hash`, `jwt_expire_hours`, `jwt_valid_after_unix`, `default_password_warning`)
 - `runtime` (`account_max_inflight`, `account_max_queue`, `global_max_inflight`, `token_refresh_interval_hours`, `account_selection_mode`)
-- `compat` (`wide_input_strict_output`, `strip_reference_markers`)
+- `compat` (`wide_input_strict_output`, `strip_reference_markers`, `empty_output_retry_max_attempts`; default `0` disables retry)
 - `responses` / `embeddings`
 - `auto_delete` (`mode`: `none` / `single` / `all`; legacy `sessions=true` is still treated as `all`)
 - `current_input_file` (`enabled` defaults to `true`, plus `min_chars`)
@@ -726,7 +727,7 @@ Hot-updates runtime settings. Supported fields:
 
 - `admin.jwt_expire_hours`
 - `runtime.account_max_inflight` / `runtime.account_max_queue` / `runtime.global_max_inflight` / `runtime.token_refresh_interval_hours` / `runtime.account_selection_mode` (`token_first` / `round_robin`)
-- `compat.wide_input_strict_output` / `compat.strip_reference_markers`
+- `compat.wide_input_strict_output` / `compat.strip_reference_markers` / `compat.empty_output_retry_max_attempts`
 - `responses.store_ttl_seconds`
 - `embeddings.provider`
 - `auto_delete.mode`

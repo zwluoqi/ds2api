@@ -7,6 +7,7 @@ import (
 
 	"ds2api/internal/config"
 	openaifmt "ds2api/internal/format/openai"
+	"ds2api/internal/httpapi/openai/shared"
 	"ds2api/internal/promptcompat"
 	"ds2api/internal/sse"
 	streamengine "ds2api/internal/stream"
@@ -140,7 +141,8 @@ func (s *responsesStreamRuntime) finalize(finishReason string, deferEmptyOutput 
 	s.finalErrorCode = ""
 	finalThinking := s.thinking.String()
 	finalToolDetectionThinking := s.toolDetectionThinking.String()
-	finalText := cleanVisibleOutput(s.text.String(), s.stripReferenceMarkers)
+	rawFinalText := cleanVisibleOutput(s.text.String(), s.stripReferenceMarkers)
+	finalText := rawFinalText
 
 	if s.bufferToolContent {
 		s.processToolStreamEvents(toolstream.Flush(&s.sieve, s.toolNames), true, true)
@@ -148,6 +150,11 @@ func (s *responsesStreamRuntime) finalize(finishReason string, deferEmptyOutput 
 
 	textParsed := detectAssistantToolCalls(finalText, finalThinking, finalToolDetectionThinking, s.toolNames)
 	detected := textParsed.Calls
+	if len(detected) == 0 {
+		finalText = visibleTextWithContentFilterFallback(finalText, finalThinking, finishReason == "content_filter")
+		textParsed = detectAssistantToolCalls(finalText, finalThinking, finalToolDetectionThinking, s.toolNames)
+		detected = textParsed.Calls
+	}
 	s.logToolPolicyRejections(textParsed)
 
 	if len(detected) > 0 {
@@ -156,6 +163,9 @@ func (s *responsesStreamRuntime) finalize(finishReason string, deferEmptyOutput 
 			s.emitFunctionCallDoneEvents(detected)
 		}
 	}
+	if len(detected) == 0 && strings.TrimSpace(rawFinalText) == "" && strings.TrimSpace(finalText) != "" {
+		s.emitTextDelta(finalText)
+	}
 
 	s.closeMessageItem()
 
@@ -163,7 +173,7 @@ func (s *responsesStreamRuntime) finalize(finishReason string, deferEmptyOutput 
 		s.failResponse(http.StatusUnprocessableEntity, "tool_choice requires at least one valid tool call.", "tool_choice_violation")
 		return true
 	}
-	if len(detected) == 0 && strings.TrimSpace(finalText) == "" {
+	if len(detected) == 0 && shared.ShouldWriteUpstreamEmptyOutputError(finalText, finalThinking, finishReason == "content_filter") {
 		status, message, code := upstreamEmptyOutputDetail(finishReason == "content_filter", finalText, finalThinking)
 		if deferEmptyOutput {
 			s.finalErrorStatus = status
