@@ -315,6 +315,20 @@ test('vercel stream keeps stop finish when content_filter arrives after visible 
   assert.equal(parsed[1].usage.completion_tokens, 1);
 });
 
+test('vercel stream uses prepared usage_prompt for prompt token estimates', async () => {
+  const usagePrompt = 'full current input file context that is longer than the live placeholder prompt';
+  const { frames } = await runMockVercelStream([
+    'data: {"p":"response/content","v":"ok"}\n\n',
+    'data: [DONE]\n\n',
+  ], {
+    final_prompt: 'short',
+    usage_prompt: usagePrompt,
+    payload: { prompt: 'short' },
+  });
+  const parsed = frames.filter((frame) => frame !== '[DONE]').map((frame) => JSON.parse(frame));
+  assert.equal(parsed[1].usage.prompt_tokens, estimateTokens(usagePrompt));
+});
+
 test('resolveToolcallPolicy defaults to feature-match + early emit when prepare flags missing', () => {
   const policy = resolveToolcallPolicy(
     {},

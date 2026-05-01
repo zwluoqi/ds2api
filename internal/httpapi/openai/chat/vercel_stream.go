@@ -107,6 +107,7 @@ func (h *Handler) handleVercelStreamPrepare(w http.ResponseWriter, r *http.Reque
 		"lease_id":         leaseID,
 		"model":            stdReq.ResponseModel,
 		"final_prompt":     stdReq.FinalPrompt,
+		"usage_prompt":     stdReq.UsagePrompt(),
 		"thinking_enabled": stdReq.Thinking,
 		"search_enabled":   stdReq.Search,
 		"compat": map[string]any{

@@ -160,7 +160,7 @@ Gemini-compatible clients can also send `x-goog-api-key`, `?key=`, or `?api_key=
 | DELETE | `/admin/dev/captures` | Admin | Clear local packet-capture entries |
 | GET | `/admin/chat-history` | Admin | Read server-side conversation history |
 | DELETE | `/admin/chat-history` | Admin | Clear server-side conversation history |
-| GET | `/admin/chat-history/{id}` | Admin | Read one server-side conversation entry |
+| GET | `/admin/chat-history/{id}` | Admin | Read one server-side conversation entry; details may include `current_input_file` (`IGNORE.txt` context file content) |
 | DELETE | `/admin/chat-history/{id}` | Admin | Delete one server-side conversation entry |
 | PUT | `/admin/chat-history/settings` | Admin | Update conversation history retention limit |
 | GET | `/admin/version` | Admin | Check current version and latest Release |

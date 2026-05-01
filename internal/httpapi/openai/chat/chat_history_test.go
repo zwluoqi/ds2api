@@ -184,7 +184,7 @@ func TestHandleStreamContextCancelledMarksHistoryStopped(t *testing.T) {
 		entryID:     entry.ID,
 		startedAt:   time.Now(),
 		lastPersist: time.Now(),
-		finalPrompt: "hello",
+		usagePrompt: "hello",
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -321,5 +321,8 @@ func TestChatCompletionsCurrentInputFilePersistsNeutralPrompt(t *testing.T) {
 	}
 	if !strings.Contains(full.Messages[0].Content, "Answer the latest user request directly.") {
 		t.Fatalf("expected neutral prompt to be persisted, got %#v", full.Messages[0])
+	}
+	if !strings.Contains(full.CurrentInputFile, "latest user turn") || !strings.Contains(full.CurrentInputFile, "[file name]: IGNORE") {
+		t.Fatalf("expected persisted current input file content, got %q", full.CurrentInputFile)
 	}
 }

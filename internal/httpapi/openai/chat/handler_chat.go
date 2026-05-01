@@ -119,10 +119,10 @@ func (h *Handler) ChatCompletions(w http.ResponseWriter, r *http.Request) {
 		h.recordAccountRequest(a, stdReq.ResolvedModel)
 	}
 	if stdReq.Stream {
-		h.handleStreamWithRetry(w, r, a, resp, payload, pow, sessionID, stdReq.ResponseModel, stdReq.FinalPrompt, stdReq.Thinking, stdReq.Search, stdReq.ToolNames, historySession)
+		h.handleStreamWithRetry(w, r, a, resp, payload, pow, sessionID, stdReq.ResponseModel, stdReq.UsagePrompt(), stdReq.Thinking, stdReq.Search, stdReq.ToolNames, historySession)
 		return
 	}
-	h.handleNonStreamWithRetry(w, r.Context(), a, resp, payload, pow, sessionID, stdReq.ResponseModel, stdReq.FinalPrompt, stdReq.Thinking, stdReq.Search, stdReq.ToolNames, historySession)
+	h.handleNonStreamWithRetry(w, r.Context(), a, resp, payload, pow, sessionID, stdReq.ResponseModel, stdReq.UsagePrompt(), stdReq.Thinking, stdReq.Search, stdReq.ToolNames, historySession)
 }
 
 func (h *Handler) autoDeleteRemoteSession(ctx context.Context, a *auth.RequestAuth, sessionID string) {

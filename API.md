@@ -160,7 +160,7 @@ Gemini 兼容客户端还可以使用 `x-goog-api-key`、`?key=` 或 `?api_key=`
 | DELETE | `/admin/dev/captures` | Admin | 清空本地抓包记录 |
 | GET | `/admin/chat-history` | Admin | 查看服务器端对话记录 |
 | DELETE | `/admin/chat-history` | Admin | 清空服务器端对话记录 |
-| GET | `/admin/chat-history/{id}` | Admin | 查看单条服务器端对话记录 |
+| GET | `/admin/chat-history/{id}` | Admin | 查看单条服务器端对话记录；详情可能包含 `current_input_file`（`IGNORE.txt` 上下文文件内容） |
 | DELETE | `/admin/chat-history/{id}` | Admin | 删除单条服务器端对话记录 |
 | PUT | `/admin/chat-history/settings` | Admin | 更新对话记录保留条数 |
 | GET | `/admin/version` | Admin | 查询当前版本与最新 Release |

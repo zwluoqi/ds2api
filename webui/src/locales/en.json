@@ -321,6 +321,7 @@
         "untitled": "Untitled conversation",
         "noPreview": "No preview available.",
         "selectPrompt": "Select a record on the left to view details.",
+        "currentInputFileTitle": "IGNORE.txt context file",
         "mergedInput": "Final message sent to DeepSeek",
         "emptyMergedPrompt": "No merged prompt is available.",
         "expand": "Expand",

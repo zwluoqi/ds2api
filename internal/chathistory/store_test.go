@@ -44,11 +44,12 @@ func TestStoreCreatesAndPersistsEntries(t *testing.T) {
 	store := New(path)
 
 	started, err := store.Start(StartParams{
-		CallerID:  "caller:abc",
-		AccountID: "user@example.com",
-		Model:     "deepseek-v4-flash",
-		Stream:    true,
-		UserInput: "hello",
+		CallerID:         "caller:abc",
+		AccountID:        "user@example.com",
+		Model:            "deepseek-v4-flash",
+		Stream:           true,
+		UserInput:        "hello",
+		CurrentInputFile: "IGNORE file body",
 	})
 	if err != nil {
 		t.Fatalf("start entry failed: %v", err)
@@ -102,6 +103,9 @@ func TestStoreCreatesAndPersistsEntries(t *testing.T) {
 	}
 	if full.Content != "answer" {
 		t.Fatalf("expected detail content=answer, got %#v", full)
+	}
+	if full.CurrentInputFile != "IGNORE file body" {
+		t.Fatalf("expected detail current input file to persist, got %#v", full)
 	}
 }
 

@@ -322,6 +322,28 @@ function HistoryTextView({ item, t }) {
     )
 }
 
+function CurrentInputFileView({ item, t }) {
+    const currentInputFile = (item?.current_input_file || '').trim()
+    if (!currentInputFile) return null
+
+    return (
+        <div className="max-w-4xl mx-auto rounded-2xl border border-border bg-background px-5 py-4">
+            <div className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground mb-3 text-left">
+                {t('chatHistory.currentInputFileTitle')}
+            </div>
+            <div className="text-sm leading-7 text-foreground whitespace-pre-wrap break-words font-mono">
+                <ExpandableText
+                    text={currentInputFile}
+                    threshold={Math.floor(MESSAGE_COLLAPSE_AT / 4)}
+                    expandLabel={t('chatHistory.expand')}
+                    collapseLabel={t('chatHistory.collapse')}
+                    buttonClassName="text-foreground hover:text-muted-foreground"
+                />
+            </div>
+        </div>
+    )
+}
+
 function DetailConversation({ selectedItem, t, viewMode, detailScrollRef, assistantStartRef, bottomButtonClassName }) {
     if (!selectedItem) return null
     const listModeState = viewMode === 'list' ? buildListModeMessages(selectedItem, t) : null
@@ -329,6 +351,8 @@ function DetailConversation({ selectedItem, t, viewMode, detailScrollRef, assist
 
     return (
         <>
+            <CurrentInputFileView item={selectedItem} t={t} />
+
             {showHistoryAtTop && <HistoryTextView item={selectedItem} t={t} />}
 
             {viewMode === 'list'

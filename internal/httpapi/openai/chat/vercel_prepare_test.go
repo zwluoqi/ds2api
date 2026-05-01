@@ -136,6 +136,10 @@ func TestHandleVercelStreamPrepareAppliesCurrentInputFile(t *testing.T) {
 	if strings.Contains(promptText, "first user turn") || strings.Contains(promptText, "latest user turn") {
 		t.Fatalf("expected original turns hidden from prompt, got %s", promptText)
 	}
+	usagePrompt, _ := body["usage_prompt"].(string)
+	if !strings.Contains(usagePrompt, "first user turn") || !strings.Contains(usagePrompt, "latest user turn") || !strings.Contains(usagePrompt, "[file name]: IGNORE") {
+		t.Fatalf("expected usage_prompt to expose current input file content for token estimation, got %s", usagePrompt)
+	}
 	refIDs, _ := payload["ref_file_ids"].([]any)
 	if len(refIDs) == 0 || refIDs[0] != "file-inline-1" {
 		t.Fatalf("expected uploaded history file first in ref_file_ids, got %#v", payload["ref_file_ids"])

@@ -1,6 +1,10 @@
 package promptcompat
 
-import "ds2api/internal/config"
+import (
+	"strings"
+
+	"ds2api/internal/config"
+)
 
 type StandardRequest struct {
 	Surface                 string
@@ -10,6 +14,7 @@ type StandardRequest struct {
 	Messages                []any
 	HistoryText             string
 	CurrentInputFileApplied bool
+	CurrentInputFileText    string
 	ToolsRaw                any
 	FinalPrompt             string
 	ToolNames               []string
@@ -19,6 +24,13 @@ type StandardRequest struct {
 	Search                  bool
 	RefFileIDs              []string
 	PassThrough             map[string]any
+}
+
+func (r StandardRequest) UsagePrompt() string {
+	if r.CurrentInputFileApplied && strings.TrimSpace(r.CurrentInputFileText) != "" {
+		return r.CurrentInputFileText
+	}
+	return r.FinalPrompt
 }
 
 type ToolChoiceMode string

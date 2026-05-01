@@ -22,8 +22,8 @@ type chatHistorySession struct {
 	entryID     string
 	startedAt   time.Time
 	lastPersist time.Time
-	finalPrompt string
 	startParams chathistory.StartParams
+	usagePrompt string
 	disabled    bool
 }
 
@@ -38,32 +38,34 @@ func startChatHistory(store *chathistory.Store, r *http.Request, a *auth.Request
 		return nil
 	}
 	entry, err := store.Start(chathistory.StartParams{
-		CallerID:    strings.TrimSpace(a.CallerID),
-		AccountID:   strings.TrimSpace(a.AccountID),
-		Model:       strings.TrimSpace(stdReq.ResponseModel),
-		Stream:      stdReq.Stream,
-		UserInput:   extractSingleUserInput(stdReq.Messages),
-		Messages:    extractAllMessages(stdReq.Messages),
-		HistoryText: stdReq.HistoryText,
-		FinalPrompt: stdReq.FinalPrompt,
+		CallerID:         strings.TrimSpace(a.CallerID),
+		AccountID:        strings.TrimSpace(a.AccountID),
+		Model:            strings.TrimSpace(stdReq.ResponseModel),
+		Stream:           stdReq.Stream,
+		UserInput:        extractSingleUserInput(stdReq.Messages),
+		Messages:         extractAllMessages(stdReq.Messages),
+		HistoryText:      stdReq.HistoryText,
+		CurrentInputFile: stdReq.CurrentInputFileText,
+		FinalPrompt:      stdReq.FinalPrompt,
 	})
 	startParams := chathistory.StartParams{
-		CallerID:    strings.TrimSpace(a.CallerID),
-		AccountID:   strings.TrimSpace(a.AccountID),
-		Model:       strings.TrimSpace(stdReq.ResponseModel),
-		Stream:      stdReq.Stream,
-		UserInput:   extractSingleUserInput(stdReq.Messages),
-		Messages:    extractAllMessages(stdReq.Messages),
-		HistoryText: stdReq.HistoryText,
-		FinalPrompt: stdReq.FinalPrompt,
+		CallerID:         strings.TrimSpace(a.CallerID),
+		AccountID:        strings.TrimSpace(a.AccountID),
+		Model:            strings.TrimSpace(stdReq.ResponseModel),
+		Stream:           stdReq.Stream,
+		UserInput:        extractSingleUserInput(stdReq.Messages),
+		Messages:         extractAllMessages(stdReq.Messages),
+		HistoryText:      stdReq.HistoryText,
+		CurrentInputFile: stdReq.CurrentInputFileText,
+		FinalPrompt:      stdReq.FinalPrompt,
 	}
 	session := &chatHistorySession{
 		store:       store,
 		entryID:     entry.ID,
 		startedAt:   time.Now(),
 		lastPersist: time.Now(),
-		finalPrompt: stdReq.FinalPrompt,
 		startParams: startParams,
+		usagePrompt: stdReq.UsagePrompt(),
 	}
 	if err != nil {
 		if entry.ID == "" {
@@ -183,7 +185,7 @@ func (s *chatHistorySession) stopped(thinking, content, finishReason string) {
 		StatusCode:       http.StatusOK,
 		ElapsedMs:        time.Since(s.startedAt).Milliseconds(),
 		FinishReason:     finishReason,
-		Usage:            openaifmt.BuildChatUsage(s.finalPrompt, thinking, content),
+		Usage:            openaifmt.BuildChatUsage(s.usagePrompt, thinking, content),
 		Completed:        true,
 	})
 }

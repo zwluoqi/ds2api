@@ -14,6 +14,7 @@ import (
 	"ds2api/internal/auth"
 	dsclient "ds2api/internal/deepseek/client"
 	"ds2api/internal/promptcompat"
+	"ds2api/internal/util"
 )
 
 func historySplitTestMessages() []any {
@@ -278,6 +279,9 @@ func TestApplyCurrentInputFileUploadsFirstTurnWithInjectedWrapper(t *testing.T) 
 		t.Fatalf("unexpected upload filename: %q", upload.Filename)
 	}
 	uploadedText := string(upload.Data)
+	if out.CurrentInputFileText != uploadedText {
+		t.Fatalf("expected current input file text to mirror uploaded content")
+	}
 	if !strings.HasPrefix(uploadedText, "[file content end]\n\n") {
 		t.Fatalf("expected injected file wrapper prefix, got %q", uploadedText)
 	}
@@ -339,6 +343,9 @@ func TestApplyCurrentInputFileUploadsFullContextFile(t *testing.T) {
 		t.Fatalf("expected IGNORE.txt upload, got %q", upload.Filename)
 	}
 	uploadedText := string(upload.Data)
+	if out.CurrentInputFileText != uploadedText {
+		t.Fatalf("expected current input file text to mirror uploaded content")
+	}
 	for _, want := range []string{"system instructions", "first user turn", "hidden reasoning", "tool result", "latest user turn", promptcompat.ThinkingInjectionMarker} {
 		if !strings.Contains(uploadedText, want) {
 			t.Fatalf("expected full context file to contain %q, got %q", want, uploadedText)
@@ -438,6 +445,15 @@ func TestChatCompletionsCurrentInputFileUploadsContextAndKeepsNeutralPrompt(t *t
 	if len(refIDs) == 0 || refIDs[0] != "file-inline-1" {
 		t.Fatalf("expected uploaded current input file to be first ref_file_id, got %#v", ds.completionReq["ref_file_ids"])
 	}
+	var body map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode response failed: %v", err)
+	}
+	usage, _ := body["usage"].(map[string]any)
+	gotPromptTokens := int(usage["prompt_tokens"].(float64))
+	if want := util.EstimateTokens(historyText); gotPromptTokens != want {
+		t.Fatalf("prompt_tokens=%d want current input file estimate %d", gotPromptTokens, want)
+	}
 }
 
 func TestResponsesCurrentInputFileUploadsContextAndKeepsNeutralPrompt(t *testing.T) {
@@ -479,6 +495,15 @@ func TestResponsesCurrentInputFileUploadsContextAndKeepsNeutralPrompt(t *testing
 	}
 	if strings.Contains(promptText, "first user turn") || strings.Contains(promptText, "latest user turn") {
 		t.Fatalf("expected prompt to hide original turns, got %s", promptText)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode response failed: %v", err)
+	}
+	usage, _ := body["usage"].(map[string]any)
+	gotInputTokens := int(usage["input_tokens"].(float64))
+	if want := util.EstimateTokens(string(ds.uploadCalls[0].Data)); gotInputTokens != want {
+		t.Fatalf("input_tokens=%d want current input file estimate %d", gotInputTokens, want)
 	}
 }
 

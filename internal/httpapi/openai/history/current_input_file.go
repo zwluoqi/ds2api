@@ -59,6 +59,7 @@ func (s Service) ApplyCurrentInputFile(ctx context.Context, a *auth.RequestAuth,
 
 	stdReq.Messages = messages
 	stdReq.CurrentInputFileApplied = true
+	stdReq.CurrentInputFileText = fileText
 	stdReq.RefFileIDs = prependUniqueRefFileID(stdReq.RefFileIDs, fileID)
 	stdReq.FinalPrompt, stdReq.ToolNames = promptcompat.BuildOpenAIPrompt(messages, stdReq.ToolsRaw, "", stdReq.ToolChoice, stdReq.Thinking)
 	return stdReq, nil

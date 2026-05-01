@@ -53,6 +53,7 @@ async function handleVercelStream(req, res, rawBody, payload) {
   const initialPowHeader = asString(prep.body.pow_header);
   const completionPayload = prep.body.payload && typeof prep.body.payload === 'object' ? prep.body.payload : null;
   const finalPrompt = asString(prep.body.final_prompt);
+  const baseUsagePrompt = asString(prep.body.usage_prompt) || finalPrompt;
   const thinkingEnabled = toBool(prep.body.thinking_enabled);
   const searchEnabled = toBool(prep.body.search_enabled);
   const toolPolicy = resolveToolcallPolicy(prep.body, payload.tools);
@@ -175,7 +176,7 @@ async function handleVercelStream(req, res, rawBody, payload) {
     let currentType = thinkingEnabled ? 'thinking' : 'text';
     let thinkingText = '';
     let outputText = '';
-    let usagePrompt = finalPrompt;
+    let usagePrompt = baseUsagePrompt;
     const toolSieveEnabled = toolPolicy.toolSieveEnabled;
     const toolSieveState = createToolSieveState();
     let toolCallsEmitted = false;
@@ -430,7 +431,7 @@ async function handleVercelStream(req, res, rawBody, payload) {
         retry_attempt: retryAttempts,
         parent_message_id: processed.responseMessageID || 0,
       });
-      usagePrompt = usagePromptWithEmptyOutputRetry(finalPrompt, retryAttempts);
+      usagePrompt = usagePromptWithEmptyOutputRetry(baseUsagePrompt, retryAttempts);
       const retryPowHeader = await refreshPowHeader('retry');
       if (!retryPowHeader) {
         return;
