@@ -15,9 +15,11 @@ type claudeStreamRuntime struct {
 	rc       *http.ResponseController
 	canFlush bool
 
-	model     string
-	toolNames []string
-	messages  []any
+	model           string
+	toolNames       []string
+	messages        []any
+	toolsRaw        any
+	promptTokenText string
 
 	thinkingEnabled       bool
 	searchEnabled         bool
@@ -47,6 +49,8 @@ func newClaudeStreamRuntime(
 	searchEnabled bool,
 	stripReferenceMarkers bool,
 	toolNames []string,
+	toolsRaw any,
+	promptTokenText string,
 ) *claudeStreamRuntime {
 	return &claudeStreamRuntime{
 		w:                     w,
@@ -59,6 +63,8 @@ func newClaudeStreamRuntime(
 		bufferToolContent:     len(toolNames) > 0,
 		stripReferenceMarkers: stripReferenceMarkers,
 		toolNames:             toolNames,
+		toolsRaw:              toolsRaw,
+		promptTokenText:       promptTokenText,
 		messageID:             fmt.Sprintf("msg_%d", time.Now().UnixNano()),
 		thinkingBlockIndex:    -1,
 		textBlockIndex:        -1,

@@ -52,6 +52,7 @@ func (s *claudeStreamRuntime) finalize(stopReason string) {
 			detected = toolcall.ParseStandaloneToolCalls(finalThinking, s.toolNames)
 		}
 		if len(detected) > 0 {
+			detected = toolcall.NormalizeParsedToolCallsForSchemas(detected, s.toolsRaw)
 			stopReason = "tool_use"
 			for i, tc := range detected {
 				idx := s.nextBlockIndex + i
@@ -108,7 +109,7 @@ func (s *claudeStreamRuntime) finalize(stopReason string) {
 		}
 	}
 
-	outputTokens := util.EstimateTokens(finalThinking) + util.EstimateTokens(finalText)
+	outputTokens := util.CountOutputTokens(finalThinking, s.model) + util.CountOutputTokens(finalText, s.model)
 	s.send("message_delta", map[string]any{
 		"type": "message_delta",
 		"delta": map[string]any{

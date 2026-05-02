@@ -184,10 +184,10 @@ func filterIncrementalToolCallDeltasByAllowed(deltas []toolstream.ToolCallDelta,
 	return shared.FilterIncrementalToolCallDeltasByAllowed(deltas, seenNames)
 }
 
-func formatFinalStreamToolCallsWithStableIDs(calls []toolcall.ParsedToolCall, ids map[int]string) []map[string]any {
-	return shared.FormatFinalStreamToolCallsWithStableIDs(calls, ids)
+func formatFinalStreamToolCallsWithStableIDs(calls []toolcall.ParsedToolCall, ids map[int]string, toolsRaw any) []map[string]any {
+	return shared.FormatFinalStreamToolCallsWithStableIDs(calls, ids, toolsRaw)
 }
 
-func detectAssistantToolCalls(text, exposedThinking, detectionThinking string, toolNames []string) toolcall.ToolCallParseResult {
-	return shared.DetectAssistantToolCalls(text, exposedThinking, detectionThinking, toolNames)
+func detectAssistantToolCalls(rawText, visibleText, exposedThinking, detectionThinking string, toolNames []string) toolcall.ToolCallParseResult {
+	return shared.DetectAssistantToolCalls(rawText, visibleText, exposedThinking, detectionThinking, toolNames)
 }

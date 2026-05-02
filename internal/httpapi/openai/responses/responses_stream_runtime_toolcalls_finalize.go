@@ -109,7 +109,8 @@ func (s *responsesStreamRuntime) buildCompletedResponseObject(finalThinking, fin
 		}
 	}
 
-	for idx, tc := range calls {
+	normalizedCalls := toolcall.NormalizeParsedToolCallsForSchemas(calls, s.toolsRaw)
+	for idx, tc := range normalizedCalls {
 		if strings.TrimSpace(tc.Name) == "" {
 			continue
 		}
@@ -144,7 +145,7 @@ func (s *responsesStreamRuntime) buildCompletedResponseObject(finalThinking, fin
 		}
 	}
 
-	return openaifmt.BuildResponseObjectFromItems(
+	obj := openaifmt.BuildResponseObjectFromItems(
 		s.responseID,
 		s.model,
 		s.finalPrompt,
@@ -153,4 +154,8 @@ func (s *responsesStreamRuntime) buildCompletedResponseObject(finalThinking, fin
 		output,
 		outputText,
 	)
+	if s.refFileTokens > 0 {
+		addRefFileTokensToUsage(obj, s.refFileTokens)
+	}
+	return obj
 }

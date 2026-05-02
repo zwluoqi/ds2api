@@ -16,6 +16,8 @@ import (
 )
 
 type chatNonStreamResult struct {
+	rawThinking           string
+	rawText               string
 	thinking              string
 	toolDetectionThinking string
 	text                  string
@@ -26,31 +28,35 @@ type chatNonStreamResult struct {
 	responseMessageID     int
 }
 
-func (h *Handler) handleNonStreamWithRetry(w http.ResponseWriter, ctx context.Context, a *auth.RequestAuth, resp *http.Response, payload map[string]any, pow, completionID, model, finalPrompt string, thinkingEnabled, searchEnabled bool, toolNames []string, historySession *chatHistorySession) {
+func (h *Handler) handleNonStreamWithRetry(w http.ResponseWriter, ctx context.Context, a *auth.RequestAuth, resp *http.Response, payload map[string]any, pow, completionID, model, finalPrompt string, refFileTokens int, thinkingEnabled, searchEnabled bool, toolNames []string, toolsRaw any, historySession *chatHistorySession) {
 	attempts := 0
 	currentResp := resp
 	usagePrompt := finalPrompt
 	accumulatedThinking := ""
+	accumulatedRawThinking := ""
 	accumulatedToolDetectionThinking := ""
 	maxAttempts := h.emptyOutputRetryMaxAttempts()
 	for {
-		result, ok := h.collectChatNonStreamAttempt(w, currentResp, completionID, model, usagePrompt, thinkingEnabled, searchEnabled, toolNames)
+		result, ok := h.collectChatNonStreamAttempt(w, currentResp, completionID, model, usagePrompt, thinkingEnabled, searchEnabled, toolNames, toolsRaw)
 		if !ok {
 			return
 		}
 		accumulatedThinking += sse.TrimContinuationOverlap(accumulatedThinking, result.thinking)
+		accumulatedRawThinking += sse.TrimContinuationOverlap(accumulatedRawThinking, result.rawThinking)
 		accumulatedToolDetectionThinking += sse.TrimContinuationOverlap(accumulatedToolDetectionThinking, result.toolDetectionThinking)
 		result.thinking = accumulatedThinking
+		result.rawThinking = accumulatedRawThinking
 		result.toolDetectionThinking = accumulatedToolDetectionThinking
-		detected := detectAssistantToolCalls(result.text, result.thinking, result.toolDetectionThinking, toolNames)
+		detected := detectAssistantToolCalls(result.rawText, result.text, result.rawThinking, result.toolDetectionThinking, toolNames)
 		result.detectedCalls = len(detected.Calls)
 		if result.detectedCalls == 0 {
 			result.text = visibleTextWithContentFilterFallback(result.text, result.thinking, result.contentFilter)
 		}
-		result.body = openaifmt.BuildChatCompletionWithToolCalls(completionID, model, usagePrompt, result.thinking, result.text, detected.Calls)
+		result.body = openaifmt.BuildChatCompletionWithToolCalls(completionID, model, usagePrompt, result.thinking, result.text, detected.Calls, toolsRaw)
+		addRefFileTokensToUsage(result.body, refFileTokens)
 		result.finishReason = chatFinishReason(result.body)
 		if !shouldRetryChatNonStream(result, attempts, maxAttempts) {
-			h.finishChatNonStreamResult(w, result, attempts, usagePrompt, historySession)
+			h.finishChatNonStreamResult(w, result, attempts, usagePrompt, refFileTokens, historySession)
 			return
 		}
 
@@ -71,12 +77,12 @@ func (h *Handler) handleNonStreamWithRetry(w http.ResponseWriter, ctx context.Co
 			config.Logger.Warn("[openai_empty_retry] retry request failed", "surface", "chat.completions", "stream", false, "retry_attempt", attempts, "error", err)
 			return
 		}
-		usagePrompt = usagePromptWithEmptyOutputRetry(finalPrompt, attempts)
+		usagePrompt = usagePromptWithEmptyOutputRetry(usagePrompt, attempts)
 		currentResp = nextResp
 	}
 }
 
-func (h *Handler) collectChatNonStreamAttempt(w http.ResponseWriter, resp *http.Response, completionID, model, usagePrompt string, thinkingEnabled, searchEnabled bool, toolNames []string) (chatNonStreamResult, bool) {
+func (h *Handler) collectChatNonStreamAttempt(w http.ResponseWriter, resp *http.Response, completionID, model, usagePrompt string, thinkingEnabled, searchEnabled bool, toolNames []string, toolsRaw any) (chatNonStreamResult, bool) {
 	if resp.StatusCode != http.StatusOK {
 		defer func() { _ = resp.Body.Close() }()
 		body, _ := io.ReadAll(resp.Body)
@@ -86,19 +92,20 @@ func (h *Handler) collectChatNonStreamAttempt(w http.ResponseWriter, resp *http.
 	result := sse.CollectStream(resp, thinkingEnabled, true)
 	stripReferenceMarkers := h.compatStripReferenceMarkers()
 	finalThinking := cleanVisibleOutput(result.Thinking, stripReferenceMarkers)
-	finalToolDetectionThinking := cleanVisibleOutput(result.ToolDetectionThinking, stripReferenceMarkers)
 	finalText := cleanVisibleOutput(result.Text, stripReferenceMarkers)
 	if searchEnabled {
 		finalText = replaceCitationMarkersWithLinks(finalText, result.CitationLinks)
 	}
-	detected := detectAssistantToolCalls(finalText, finalThinking, finalToolDetectionThinking, toolNames)
+	detected := detectAssistantToolCalls(result.Text, finalText, result.Thinking, result.ToolDetectionThinking, toolNames)
 	if len(detected.Calls) == 0 {
 		finalText = visibleTextWithContentFilterFallback(finalText, finalThinking, result.ContentFilter)
 	}
-	respBody := openaifmt.BuildChatCompletionWithToolCalls(completionID, model, usagePrompt, finalThinking, finalText, detected.Calls)
+	respBody := openaifmt.BuildChatCompletionWithToolCalls(completionID, model, usagePrompt, finalThinking, finalText, detected.Calls, toolsRaw)
 	return chatNonStreamResult{
+		rawThinking:           result.Thinking,
+		rawText:               result.Text,
 		thinking:              finalThinking,
-		toolDetectionThinking: finalToolDetectionThinking,
+		toolDetectionThinking: result.ToolDetectionThinking,
 		text:                  finalText,
 		contentFilter:         result.ContentFilter,
 		detectedCalls:         len(detected.Calls),
@@ -108,7 +115,7 @@ func (h *Handler) collectChatNonStreamAttempt(w http.ResponseWriter, resp *http.
 	}, true
 }
 
-func (h *Handler) finishChatNonStreamResult(w http.ResponseWriter, result chatNonStreamResult, attempts int, usagePrompt string, historySession *chatHistorySession) {
+func (h *Handler) finishChatNonStreamResult(w http.ResponseWriter, result chatNonStreamResult, attempts int, usagePrompt string, refFileTokens int, historySession *chatHistorySession) {
 	if result.detectedCalls == 0 && shouldWriteUpstreamEmptyOutputError(result.text, result.thinking, result.contentFilter) {
 		status, message, code := upstreamEmptyOutputDetail(result.contentFilter, result.text, result.thinking)
 		if historySession != nil {
@@ -119,7 +126,7 @@ func (h *Handler) finishChatNonStreamResult(w http.ResponseWriter, result chatNo
 		return
 	}
 	if historySession != nil {
-		historySession.success(http.StatusOK, result.thinking, result.text, result.finishReason, openaifmt.BuildChatUsage(usagePrompt, result.thinking, result.text))
+		historySession.success(http.StatusOK, result.thinking, result.text, result.finishReason, openaifmt.BuildChatUsageForModel("", usagePrompt, result.thinking, result.text, refFileTokens))
 	}
 	writeJSON(w, http.StatusOK, result.body)
 	source := "first_attempt"
@@ -145,8 +152,8 @@ func shouldRetryChatNonStream(result chatNonStreamResult, attempts, maxAttempts 
 		!result.contentFilter
 }
 
-func (h *Handler) handleStreamWithRetry(w http.ResponseWriter, r *http.Request, a *auth.RequestAuth, resp *http.Response, payload map[string]any, pow, completionID, model, finalPrompt string, thinkingEnabled, searchEnabled bool, toolNames []string, historySession *chatHistorySession) {
-	streamRuntime, initialType, ok := h.prepareChatStreamRuntime(w, resp, completionID, model, finalPrompt, thinkingEnabled, searchEnabled, toolNames, historySession)
+func (h *Handler) handleStreamWithRetry(w http.ResponseWriter, r *http.Request, a *auth.RequestAuth, resp *http.Response, payload map[string]any, pow, completionID, model, finalPrompt string, refFileTokens int, thinkingEnabled, searchEnabled bool, toolNames []string, toolsRaw any, historySession *chatHistorySession) {
+	streamRuntime, initialType, ok := h.prepareChatStreamRuntime(w, resp, completionID, model, finalPrompt, refFileTokens, thinkingEnabled, searchEnabled, toolNames, toolsRaw, historySession)
 	if !ok {
 		return
 	}
@@ -189,7 +196,7 @@ func (h *Handler) handleStreamWithRetry(w http.ResponseWriter, r *http.Request, 
 	}
 }
 
-func (h *Handler) prepareChatStreamRuntime(w http.ResponseWriter, resp *http.Response, completionID, model, finalPrompt string, thinkingEnabled, searchEnabled bool, toolNames []string, historySession *chatHistorySession) (*chatStreamRuntime, string, bool) {
+func (h *Handler) prepareChatStreamRuntime(w http.ResponseWriter, resp *http.Response, completionID, model, finalPrompt string, refFileTokens int, thinkingEnabled, searchEnabled bool, toolNames []string, toolsRaw any, historySession *chatHistorySession) (*chatStreamRuntime, string, bool) {
 	if resp.StatusCode != http.StatusOK {
 		defer func() { _ = resp.Body.Close() }()
 		body, _ := io.ReadAll(resp.Body)
@@ -214,9 +221,10 @@ func (h *Handler) prepareChatStreamRuntime(w http.ResponseWriter, resp *http.Res
 	}
 	streamRuntime := newChatStreamRuntime(
 		w, rc, canFlush, completionID, time.Now().Unix(), model, finalPrompt,
-		thinkingEnabled, searchEnabled, h.compatStripReferenceMarkers(), toolNames,
+		thinkingEnabled, searchEnabled, h.compatStripReferenceMarkers(), toolNames, toolsRaw,
 		len(toolNames) > 0, h.toolcallFeatureMatchEnabled() && h.toolcallEarlyEmitHighConfidence(),
 	)
+	streamRuntime.refFileTokens = refFileTokens
 	return streamRuntime, initialType, true
 }
 
@@ -246,11 +254,15 @@ func (h *Handler) consumeChatStreamAttempt(r *http.Request, resp *http.Response,
 			}
 		},
 		OnContextDone: func() {
+			streamRuntime.markContextCancelled()
 			if historySession != nil {
 				historySession.stopped(streamRuntime.thinking.String(), streamRuntime.text.String(), string(streamengine.StopReasonContextCancelled))
 			}
 		},
 	})
+	if streamRuntime.finalErrorCode == string(streamengine.StopReasonContextCancelled) {
+		return true, false
+	}
 	terminalWritten := streamRuntime.finalize(finalReason, allowDeferEmpty && finalReason != "content_filter")
 	if terminalWritten {
 		recordChatStreamHistory(streamRuntime, historySession)
@@ -281,6 +293,10 @@ func logChatStreamTerminal(streamRuntime *chatStreamRuntime, attempts int) {
 	source := "first_attempt"
 	if attempts > 0 {
 		source = "synthetic_retry"
+	}
+	if streamRuntime.finalErrorCode == string(streamengine.StopReasonContextCancelled) {
+		config.Logger.Info("[openai_empty_retry] terminal cancelled", "surface", "chat.completions", "stream", true, "retry_attempts", attempts, "error_code", streamRuntime.finalErrorCode)
+		return
 	}
 	if streamRuntime.finalErrorMessage != "" {
 		config.Logger.Info("[openai_empty_retry] terminal empty output", "surface", "chat.completions", "stream", true, "retry_attempts", attempts, "success_source", "none", "error_code", streamRuntime.finalErrorCode)

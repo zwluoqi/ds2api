@@ -9,12 +9,15 @@ services:
       # Host port is configurable via DS2API_HOST_PORT; container port stays fixed at 5001.
       - "${DS2API_HOST_PORT:-6011}:5001"
     volumes:
-      - ./config.json:/app/config.json    # 配置文件
-      - ./data:/app/data                  # 运行时数据：对话历史、账号统计等
+      - ./config.json:/data/config.json   # 配置文件（持久化推荐路径）
+      - ./data/chat_history:/data/chat_history
+      - ./data/account_stats:/data/account_stats
+      - ./data/account_tokens:/data/account_tokens
     environment:
       - TZ=Asia/Shanghai
       - LOG_LEVEL=INFO
       - DS2API_ADMIN_KEY=${DS2API_ADMIN_KEY:-ds2api}
-      - DS2API_CHAT_HISTORY_PATH=/app/data/chat_history.json
-      - DS2API_ACCOUNT_STATS_DIR=/app/data/account_stats
-      - DS2API_ACCOUNT_TOKENS_DIR=/app/data/account_tokens
+      - DS2API_CONFIG_PATH=/data/config.json
+      - DS2API_CHAT_HISTORY_PATH=/data/chat_history/chat_history.json
+      - DS2API_ACCOUNT_STATS_DIR=/data/account_stats
+      - DS2API_ACCOUNT_TOKENS_DIR=/data/account_tokens
